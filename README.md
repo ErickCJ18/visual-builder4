@@ -6,7 +6,7 @@ This Visual Studio Code extension is designed to simplify script development usi
 
 ## Key Features
 
-- **Script Compilation**: Compile your scripts using the keyboard shortcut `Ctrl + Shift + B` or via the Command Palette (`Ctrl + Shift + P`) with the `Compile Script` command.
+- **Script Compilation**: Compile your scripts using the keyboard shortcut `F6` or via the Command Palette (`Ctrl + Shift + P`) with the `Compile Script` command.
 - **Sanny Builder 4 Folder Selection**: Specify the path to the Sanny Builder 4 folder through the Command Palette (`Ctrl + Shift + P`) with the `Select SB4 Folder` command.
 
 ## Installation
@@ -29,7 +29,7 @@ After installing the extension, you need to specify the path to the Sanny Builde
 
 ### Compiling a Script
 
-1. Press `Ctrl + Shift + B` or open the Command Palette (`Ctrl + Shift + P`) and type `Compile Script`.
+1. Press `F6` or open the Command Palette (`Ctrl + Shift + P`) and type `Compile Script`.
 
 ### Decompiling a Script
 1. Open the Command Palette (`Ctrl + Shift + P`) and type `Decompile Script`.

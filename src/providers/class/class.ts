@@ -14,6 +14,10 @@ export class ClassProvider extends Singleton {
 		ClassCompletionProvider.getInstance().register();
 	}
 
+	public reload() {
+		this.parse();
+	}
+
 	public getMember(className: string) {
 		return this.classes.get(className);
 	}

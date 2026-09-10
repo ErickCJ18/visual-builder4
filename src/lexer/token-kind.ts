@@ -18,6 +18,7 @@ export enum TokenKind {
 	Identifier,
 	LabelJump,
 	LabelDefine,
+	Model,
 	NewLine,
 	EOF
 };

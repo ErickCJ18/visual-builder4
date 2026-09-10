@@ -4,4 +4,5 @@ export * from './gta-version-manager';
 export * from './html-format-color-manager';
 export * from './language-manager';
 export * from './storage-data-manager';
+export * from './syntax-color-manager';
 export * from './webview-manager';

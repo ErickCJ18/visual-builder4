@@ -1,131 +1,242 @@
 {
-  "name": "sb4",
-  "displayName": "Sanny Builder 4",
-  "description": "Extension that replaces the editor Sanny builder 4",
-  "version": "0.7.0",
-  "publisher": "EOS",
-  "author": "EOS",
-  "license": "MIT",
-  "icon": "images/logo.jpg",
-  "galleryBanner": {
-    "color": "#100f11",
-    "theme": "dark"
-  },
-  "engines": {
-    "vscode": "^1.108.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/NoPressF/sb4-vscode"
-  },
-  "bugs": {
-    "url": "https://github.com/NoPressF/sb4-vscode/issues"
-  },
-  "categories": [
-    "Other",
-    "Formatters"
-  ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
-  "main": "./dist/extension.js",
-  "contributes": {
-    "commands": [
-      {
-        "command": "sb4.selectFolder",
-        "title": "SB4: Select SB4 Folder"
-      },
-      {
-        "command": "sb4.compileScript",
-        "title": "SB4: Compile Script"
-      },
-      {
-        "command": "sb4.decompileScript",
-        "title": "SB4: Decompile Script"
-      },
-      {
-        "command": "sb4.searchOpcodes",
-        "title": "SB4: Search Opcodes"
-      }
-    ],
-    "keybindings": [
-      {
-        "key": "ctrl+shift+b",
-        "command": "sb4.compileScript",
-        "when": "editorTextFocus"
-      },
-      {
-        "key": "ctrl+alt+2",
-        "command": "sb4.searchOpcodes",
-        "when": "editorTextFocus"
-      }
-    ],
-    "languages": [
-      {
-        "id": "sb",
-        "aliases": [
-          "SB",
-          "sb"
-        ],
-        "extensions": [],
-        "configuration": "./language-configuration.json",
-        "icon": {
-          "light": "./images/language-icon-16.png",
-          "dark": "./images/language-icon-16.png"
-        }
-      }
-    ],
-    "grammars": [
-      {
-        "language": "sb",
-        "scopeName": "source.sb4",
-        "path": "./syntax/sb4.tm-language.json",
-        "extensions": []
-      }
-    ],
-    "snippets": [
-      {
-        "language": "sb",
-        "path": "./snippets/snippets.json"
-      }
-    ],
-    "semanticTokenScopes": [
-      {
-        "language": "sb",
-        "scopes": {
-          "class": [
-            "class.sb"
-          ],
-          "method": [
-            "method.sb"
-          ]
-        }
-      }
-    ]
-  },
-  "keywords": [
-    "sanny builder 4",
-    "sanny builder",
-    "scm",
-    "gta",
-    "cleo"
-  ],
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
-    "watch": "tsc -watch -p tsconfig.json"
-  },
-  "devDependencies": {
-    "@types/node": "^20.19.28",
-    "@types/vscode": "^1.108.1",
-    "@typescript-eslint/eslint-plugin": "^8.52.0",
-    "@typescript-eslint/parser": "^8.52.0",
-    "eslint": "^9.39.2",
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "tsc-alias": "^1.8.16",
-    "iconv-lite": "^0.7.2",
-    "fast-xml-parser": "^5.3.3"
-  }
+    "name":  "visual-builder-4",
+    "displayName":  "Visual Builder 4",
+    "description":  "Extension that replaces the editor Sanny builder 4",
+    "version":  "0.1.0",
+    "publisher":  "eos-mixel",
+    "author":  "EOS, Mixel",
+    "license":  "MIT",
+    "icon":  "images/logo.jpg",
+    "galleryBanner":  {
+                          "color":  "#100f11",
+                          "theme":  "dark"
+                      },
+    "engines":  {
+                    "vscode":  "^1.108.0"
+                },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "https://github.com/NoPressF/sb4-vscode"
+                   },
+    "bugs":  {
+                 "url":  "https://github.com/NoPressF/sb4-vscode/issues"
+             },
+    "categories":  [
+                       "Other",
+                       "Formatters"
+                   ],
+    "activationEvents":  [
+                             "onStartupFinished"
+                         ],
+    "main":  "./dist/extension.js",
+    "contributes":  {
+                        "commands":  [
+                                         {
+                                             "command":  "sb4.selectFolder",
+                                             "title":  "SB4: Select SB4 Folder"
+                                         },
+                                         {
+                                             "command":  "sb4.selectVersion",
+                                             "title":  "SB4: Select GTA Version"
+                                         },
+                                         {
+                                             "command":  "sb4.compileScript",
+                                             "title":  "SB4: Compile Script (F6)"
+                                         },
+                                         {
+                                             "command":  "sb4.decompileScript",
+                                             "title":  "SB4: Decompile Script (F7)"
+                                         },
+                                         {
+                                             "command":  "sb4.searchOpcodes",
+                                             "title":  "SB4: Search Opcodes"
+                                         },
+                                         {
+                                             "command":  "sb4.reloadColors",
+                                             "title":  "SB4: Reload Syntax Colors"
+                                         },
+                                         {
+                                             "command":  "sb4.customizeColors",
+                                             "title":  "SB4: Customize Syntax Colors"
+                                         },
+                                         {
+                                             "command":  "sb4.insertCoordinates",
+                                             "title":  "SB4: Insert Player Coordinates"
+                                         },
+                                         {
+                                             "command":  "sb4.insertAngle",
+                                             "title":  "SB4: Insert Player Angle"
+                                         }
+                                     ],
+                        "configuration":  {
+                                              "title":  "SB4",
+                                              "properties":  {
+                                                                 "sb4.colors.enabled":  {
+                                                                                            "type":  "boolean",
+                                                                                            "default":  true,
+                                                                                            "description":  "Habilita el coloreado de sintaxis por categorÃ­as (leÃ­do desde un archivo .ini estilo krauber.ini)."
+                                                                                        },
+                                                                 "sb4.colors.iniPath":  {
+                                                                                            "type":  "string",
+                                                                                            "default":  "",
+                                                                                            "description":  "Ruta al archivo .ini con los colores de sintaxis (formato krauber.ini, secciÃ³n [syntax]). VacÃ­o = buscar \u0027krauber.ini\u0027 en la carpeta SB4."
+                                                                                        },
+                                                                 "sb4.coords.coordinateDecimals":  {
+                                                                                                       "type":  "number",
+                                                                                                       "default":  4,
+                                                                                                       "description":  "Cantidad de decimales para las coordenadas X, Y y Z insertadas con Ctrl+Shift+C."
+                                                                                                   },
+                                                                 "sb4.coords.angleDecimals":  {
+                                                                                                  "type":  "number",
+                                                                                                  "default":  2,
+                                                                                                  "description":  "Cantidad de decimales para el Ã¡ngulo Z insertado con Ctrl+Shift+E."
+                                                                                              },
+                                                                 "sb4.coords.processOverrides":  {
+                                                                                                     "type":  "object",
+                                                                                                     "default":  {
+
+                                                                                                                 },
+                                                                                                     "description":  "Sobreescribe punteros/offsets de memoria por juego (formato: { \"gta_sa\": { \"playerPointer\": \"0xB6F5F0\", \"angleOffset\": \"0x558\" }, ... }).",
+                                                                                                     "properties":  {
+                                                                                                                        "gta_sa":  {
+                                                                                                                                       "type":  "object",
+                                                                                                                                       "properties":  {
+                                                                                                                                                          "playerPointer":  {
+                                                                                                                                                                                "type":  "string"
+                                                                                                                                                                            },
+                                                                                                                                                          "angleOffset":  {
+                                                                                                                                                                              "type":  "string"
+                                                                                                                                                                          }
+                                                                                                                                                      }
+                                                                                                                                   },
+                                                                                                                        "gta-vc":  {
+                                                                                                                                       "type":  "object",
+                                                                                                                                       "properties":  {
+                                                                                                                                                          "playerPointer":  {
+                                                                                                                                                                                "type":  "string"
+                                                                                                                                                                            },
+                                                                                                                                                          "angleOffset":  {
+                                                                                                                                                                              "type":  "string"
+                                                                                                                                                                          }
+                                                                                                                                                      }
+                                                                                                                                   },
+                                                                                                                        "gta3":  {
+                                                                                                                                     "type":  "object",
+                                                                                                                                     "properties":  {
+                                                                                                                                                        "playerPointer":  {
+                                                                                                                                                                              "type":  "string"
+                                                                                                                                                                          },
+                                                                                                                                                        "angleOffset":  {
+                                                                                                                                                                            "type":  "string"
+                                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                 }
+                                                                                                                    }
+                                                                                                 }
+                                                             }
+                                          },
+                        "keybindings":  [
+                                            {
+                                                "key":  "f6",
+                                                "command":  "sb4.compileScript",
+                                                "when":  "editorTextFocus"
+                                            },
+                                            {
+                                                "key":  "f7",
+                                                "command":  "sb4.decompileScript",
+                                                "when":  "editorTextFocus"
+                                            },
+                                            {
+                                                "key":  "ctrl+alt+2",
+                                                "command":  "sb4.searchOpcodes",
+                                                "when":  "editorTextFocus"
+                                            },
+                                            {
+                                                "key":  "ctrl+shift+c",
+                                                "command":  "sb4.insertCoordinates",
+                                                "when":  "editorTextFocus \u0026\u0026 resourceLangId == sannybuilder"
+                                            },
+                                            {
+                                                "key":  "ctrl+shift+e",
+                                                "command":  "sb4.insertAngle",
+                                                "when":  "editorTextFocus \u0026\u0026 resourceLangId == sannybuilder"
+                                            }
+                                        ],
+                        "languages":  [
+                                          {
+                                              "id":  "sannybuilder",
+                                              "aliases":  [
+                                                              "Sanny Builder",
+                                                              "SannyBuilder",
+                                                              "SB"
+                                                          ],
+                                              "extensions":  [
+                                                                 ".cs",
+                                                                 ".csm",
+                                                                 ".scm"
+                                                             ],
+                                              "configuration":  "./language-configuration.json",
+                                              "icon":  {
+                                                           "light":  "./images/language-icon-16.png",
+                                                           "dark":  "./images/language-icon-16.png"
+                                                       }
+                                          }
+                                      ],
+                        "grammars":  [
+                                         {
+                                             "language":  "sannybuilder",
+                                             "scopeName":  "source.sb4",
+                                             "path":  "./syntax/sb4.tm-language.json",
+                                             "extensions":  [
+                                                                ".cs",
+                                                                ".csm",
+                                                                ".scm"
+                                                            ]
+                                         }
+                                     ],
+                        "snippets":  [
+                                         {
+                                             "language":  "sannybuilder",
+                                             "path":  "./snippets/snippets.json"
+                                         }
+                                     ],
+                        "semanticTokenScopes":  [
+                                                    {
+                                                        "language":  "sannybuilder",
+                                                        "scopes":  {
+                                                                       "class":  [
+                                                                                     "class.sb"
+                                                                                 ],
+                                                                       "method":  [
+                                                                                      "method.sb"
+                                                                                  ]
+                                                                   }
+                                                    }
+                                                ]
+                    },
+    "keywords":  [
+                     "sanny builder 4",
+                     "sanny builder",
+                     "scm",
+                     "gta",
+                     "cleo"
+                 ],
+    "scripts":  {
+                    "vscode:prepublish":  "npm run compile",
+                    "compile":  "tsc -p tsconfig.json \u0026\u0026 tsc-alias -p tsconfig.json",
+                    "watch":  "tsc -watch -p tsconfig.json"
+                },
+    "devDependencies":  {
+                            "@types/node":  "^20.19.28",
+                            "@types/vscode":  "^1.108.1",
+                            "@typescript-eslint/eslint-plugin":  "^8.52.0",
+                            "@typescript-eslint/parser":  "^8.52.0",
+                            "eslint":  "^9.39.2",
+                            "typescript":  "^5.9.3"
+                        },
+    "dependencies":  {
+                         "tsc-alias":  "^1.8.16",
+                         "iconv-lite":  "^0.7.2",
+                         "fast-xml-parser":  "^5.3.3"
+                     }
 }

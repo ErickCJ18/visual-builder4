@@ -13,6 +13,10 @@ export class CommandManager extends Singleton {
 		return this.commands;
 	}
 
+	public async reload() {
+		await this.load();
+	}
+
 	private async load() {
 		const path = this.gtaVersionManager.getPath();
 
@@ -39,6 +43,7 @@ export class CommandManager extends Singleton {
 
 	private build(rawCommand: any): { id: string, command: Command } {
 		const command: Command = {
+			id: rawCommand.id,
 			name: rawCommand.name.toLowerCase(),
 			class: rawCommand.class,
 			member: rawCommand.member,

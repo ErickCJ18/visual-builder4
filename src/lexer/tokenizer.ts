@@ -21,13 +21,21 @@ const multiCharTokens: Record<string, TokenKind> = {
 const prefixCharTokens: Record<string, TokenKind> = {
 	'@': TokenKind.LabelJump,
 	':': TokenKind.LabelDefine,
-	'$': TokenKind.GlobalVar
+	'$': TokenKind.GlobalVar,
+	'#': TokenKind.Model
 };
 
 const postfixCharTokens: Record<string, TokenKind> = {
 	'@': TokenKind.LocalVar,
 	'ifsv': TokenKind.ArraySize
 };
+
+const isSpaceChar = (c: string): boolean => c === ' ' || c === '\t' || c === '\r';
+const isDigitChar = (c: string): boolean => c >= '0' && c <= '9';
+const isWordChar = (c: string): boolean =>
+	(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || isDigitChar(c);
+const isIdentStartChar = (c: string): boolean =>
+	(c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';
 
 export class Tokenizer extends Singleton {
 	private tokens: Token[] = [];
@@ -48,7 +56,7 @@ export class Tokenizer extends Singleton {
 			col++;
 		}
 
-		while (col < line.length && /\w/.test(line[col])) {
+		while (col < line.length && isWordChar(line[col])) {
 			col++;
 		}
 
@@ -59,7 +67,7 @@ export class Tokenizer extends Singleton {
 	private pushPostfix(line: string, lineNum: number, col: number) {
 		const start = col;
 
-		while (col < line.length && /\d/.test(line[col])) {
+		while (col < line.length && isDigitChar(line[col])) {
 			col++;
 
 			for (const [str, kind] of Object.entries(postfixCharTokens)) {
@@ -86,7 +94,7 @@ export class Tokenizer extends Singleton {
 			while (col < line.length) {
 				const char = line[col];
 
-				if (/\s/.test(char)) {
+				if (isSpaceChar(char)) {
 					col++;
 					continue;
 				}
@@ -125,26 +133,26 @@ export class Tokenizer extends Singleton {
 				}
 
 				// local var / array size
-				if (/\d/.test(char)) {
+				if (isDigitChar(char)) {
 					col = this.pushPostfix(line, lineNum, col);
 					continue;
 				}
 
 				// identifier
-				if (/[A-Za-z_]/.test(char)) {
+				if (isIdentStartChar(char)) {
 					col = this.pushPrefix(line, TokenKind.Identifier, lineNum, col);
 					continue;
 				}
 
 				// number / float
-				if (/\d/.test(char)) {
+				if (isDigitChar(char)) {
 					const start = col;
 					let hasDot = false;
 
 					while (col < line.length) {
 						const c = line[col];
 
-						if (/\d/.test(c)) {
+						if (isDigitChar(c)) {
 							col++;
 							continue;
 						}
@@ -182,7 +190,7 @@ export class Tokenizer extends Singleton {
 							}
 						}
 
-						if (c === '\'' || char === '\"') {
+						if (c === char) {
 							col++;
 							str += c;
 							break;

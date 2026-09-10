@@ -9,6 +9,10 @@ export class CommandFormatterProvider extends Singleton {
 		this.formatAll();
 	}
 
+	public reload() {
+		this.formatAll();
+	}
+
 	private format(commandType: CommandType) {
 		const commands = this.commandManager.getCommands();
 

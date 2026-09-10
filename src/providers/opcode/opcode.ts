@@ -14,6 +14,10 @@ export class OpcodeProvider extends Singleton {
 		OpcodeCompletionProvider.getInstance().register();
 	}
 
+	public reload() {
+		this.load();
+	}
+
 	public get() {
 		return this.opcodes;
 	}

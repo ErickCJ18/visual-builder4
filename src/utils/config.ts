@@ -12,7 +12,7 @@ export const SEARCH_TYPE: Record<string, CommandType> = {
 };
 
 export const CONFIG = Object.freeze({
-    LANGUAGE_SELECTOR: { language: 'sb', scheme: 'file' },
+    LANGUAGE_SELECTOR: { language: 'sannybuilder', scheme: 'file' },
     SANNY_EXE: 'sanny.exe',
     SELECT_FOLDER_LABEL: 'Select SB4 Folder'
 });

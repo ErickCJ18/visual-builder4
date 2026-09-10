@@ -17,6 +17,10 @@ export class EnumProvider extends Singleton {
 		EnumCompletionProvider.getInstance().register();
 	}
 
+	public async reload() {
+		await this.load();
+	}
+
 	public getElement(element: string) {
 		return this.enums.get(element);
 	}

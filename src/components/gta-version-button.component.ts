@@ -1,6 +1,8 @@
-import { GtaVersionManager, StorageDataManager } from '@managers';
+import { CommandManager, GtaVersionManager, StorageDataManager } from '@managers';
+import { ClassProvider, CommandFormatterProvider, EnumProvider, ModelProvider, OpcodeProvider, SyntaxColoringProvider } from '@providers';
 import { CONFIG, Singleton, StorageKey } from '@utils';
 import * as vscode from 'vscode';
+import { GtaVersion } from '@managers';
 import { OpcodesSearch } from '../providers/search/opcodes-search';
 
 export class GtaVersionButton extends Singleton {
@@ -55,11 +57,18 @@ export class GtaVersionButton extends Singleton {
         );
     }
 
-    private async handleVersionSelection() {
-        const versions = await this.gtaVersionManager.parseVersions();
+    public async handleVersionSelection() {
+        let versions: GtaVersion[];
+
+        try {
+            versions = await this.gtaVersionManager.parseVersions();
+        } catch (err) {
+            await vscode.window.showErrorMessage(`Error reading SB4 folder: ${err}`);
+            return;
+        }
 
         if (!versions.length) {
-            this.showErrorMessageNotFoundAnyVersion();
+            await this.showErrorMessageNotFoundAnyVersion();
             return;
         }
 
@@ -71,15 +80,32 @@ export class GtaVersionButton extends Singleton {
         const gtaVersion = this.storageDataManager.get(StorageKey.GtaVersion) as string;
 
         if (selected.label === gtaVersion) {
+            await vscode.window.showInformationMessage(`GTA version "${selected.label}" is already selected.`);
             return;
         }
 
         await this.storageDataManager.set(StorageKey.GtaVersion, selected.label);
-        //await this.languageManager.updatePatterns();
-        this.updateButtonText(selected.label);
+		//await this.languageManager.updatePatterns();
+		this.updateButtonText(selected.label);
 
-        await OpcodesSearch.getInstance().updateWebviewContent(true);
-    }
+		try {
+			await this.reloadOpcodes();
+			await OpcodesSearch.getInstance().updateWebviewContent(true);
+			await vscode.window.showInformationMessage(`GTA version "${selected.label}" loaded.`);
+		} catch (err) {
+			await vscode.window.showErrorMessage(`Failed to load opcodes for version "${selected.label}": ${err}`);
+		}
+	}
+
+	private async reloadOpcodes() {
+		await CommandManager.getInstance().reload();
+		CommandFormatterProvider.getInstance().reload();
+		ClassProvider.getInstance().reload();
+		OpcodeProvider.getInstance().reload();
+		await EnumProvider.getInstance().reload();
+		await ModelProvider.getInstance().reload();
+		await SyntaxColoringProvider.getInstance().reload();
+	}
 
     private setupEditorChangeHandler(): void {
         const updateVisibility = (editor: vscode.TextEditor | undefined) => {

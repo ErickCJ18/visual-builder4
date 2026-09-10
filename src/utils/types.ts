@@ -24,6 +24,7 @@ export interface CommandIO {
 };
 
 export interface Command {
+    id?: string;
     name: string;
     class?: string;
     member?: string;
