@@ -68,7 +68,11 @@
           "sb"
         ],
         "extensions": [],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./images/language-icon-16.png",
+          "dark": "./images/language-icon-16.png"
+        }
       }
     ],
     "grammars": [
