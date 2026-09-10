@@ -3,6 +3,7 @@ export * from './class/class';
 export * from './class/completion';
 export * from './class/hover';
 export * from './command/command-formatter-provider';
+export * from './diagnostics/loop-wait-diagnostics';
 export * from './enum/completion';
 export * from './enum/enum';
 export * from './enum/hover';
