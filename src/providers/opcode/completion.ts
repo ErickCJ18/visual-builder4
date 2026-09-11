@@ -39,6 +39,12 @@ export class OpcodeCompletionProvider extends Singleton {
 					const overloads = opcodes.get(opcodeName) ?? [];
 					const command = overloads[0];
 
+					// Opcodes no soportados o NOP no se sugieren nunca
+					// (regla cleo-ai: avoid unsupported/nop opcodes).
+					if (command.attrs?.isUnsupported || command.attrs?.isNop) {
+						return [];
+					}
+
 					const result = [
 						this.buildNameItem(opcodeName, overloads)
 					];

@@ -5,6 +5,28 @@ const opcodeMatches = document.querySelector('.opcode-matches');
 const searchDisplayType = document.getElementById('search-display-type');
 const vscode = acquireVsCodeApi();
 
+const L = window.VB4_LOCALE || {};
+function t(key, params) {
+	let s = L[key] || key;
+	if (params) {
+		s = s.replace(/\{(\w+)\}/g, (m, n) => (params[n] !== undefined ? String(params[n]) : m));
+	}
+	return s;
+}
+
+function applyLocale() {
+	document.getElementById('ow-title').textContent = t('ow.title');
+	document.getElementById('ow-choose').textContent = t('ow.chooseType');
+	document.getElementById('ow-opt-opcodes').textContent = t('ow.typeOpcodes');
+	document.getElementById('ow-opt-classes').textContent = t('ow.typeClasses');
+	document.getElementById('ow-filter-label').textContent = t('ow.filterLabel');
+	filterInput.placeholder = t('ow.filterPlaceholder');
+	noResultsMessage.textContent = t('ow.noResults');
+	opcodeMatches.textContent = t('ow.matches', { n: 0 });
+}
+
+applyLocale();
+
 const MessageCommand = Object.freeze({
 	UPDATE_SEARCH_TYPE: 0
 });
@@ -39,7 +61,7 @@ function filterOpcodes(searchText) {
 		opcodeList.style.display = 'block';
 		noResultsMessage.style.display = 'none';
 		opcodeMatches.style.display = 'inline';
-		opcodeMatches.textContent = `Matches: ${visibleItemsCount}`;
+		opcodeMatches.textContent = t('ow.matches', { n: visibleItemsCount });
 	}
 }
 

@@ -52,6 +52,7 @@ export class CommandManager extends Singleton {
 			shortDesc: rawCommand.short_desc,
 			attrs: {
 				isUnsupported: rawCommand.attrs?.is_unsupported === true,
+				isNop: rawCommand.attrs?.is_nop === true,
 				isKeyWord: rawCommand.attrs?.is_keyword === true
 			}
 		};

@@ -4,6 +4,7 @@ import { promises as fsp } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { GtaVersionManager } from '@managers';
+import { LocaleManager } from '@i18n';
 import { BaseProvider } from '../base';
 
 interface CoordsGameConfig {
@@ -365,7 +366,7 @@ export class CoordsProvider extends BaseProvider {
         const game = this.resolveGame();
 
         if (!game) {
-            vscode.window.showErrorMessage('Could not determine the GTA game to read. Select a valid GTA version (SB4: Select GTA Version).');
+            vscode.window.showErrorMessage(LocaleManager.getInstance().t('coords.noGame'));
             return undefined;
         }
 
@@ -377,17 +378,17 @@ export class CoordsProvider extends BaseProvider {
             const stdout = await this.runReader(config.exe, playerPtrHex, config.coordsMode, angleOffsetHex);
 
             if (stdout.trim() === 'NO_PROCESS') {
-                vscode.window.showInformationMessage(`Game process '${config.exe}.exe' not found. Start the game and retry.`);
+                vscode.window.showInformationMessage(LocaleManager.getInstance().t('coords.notFound', { exe: config.exe }));
                 return undefined;
             }
 
             if (stdout.trim() === 'NO_ACCESS') {
-                vscode.window.showErrorMessage(`Could not open process '${config.exe}.exe' for reading.`);
+                vscode.window.showErrorMessage(LocaleManager.getInstance().t('coords.couldNotOpenProcess', { exe: config.exe }));
                 return undefined;
             }
 
             if (stdout.trim() === 'READ_FAIL') {
-                vscode.window.showErrorMessage('Could not read the player coordinates from memory.');
+                vscode.window.showErrorMessage(LocaleManager.getInstance().t('coords.readFail'));
                 return undefined;
             }
 
@@ -395,13 +396,13 @@ export class CoordsProvider extends BaseProvider {
             const values = parts.map(p => Number.parseFloat(p));
 
             if (values.length < 4 || values.some(v => !Number.isFinite(v))) {
-                vscode.window.showErrorMessage(`Unexpected output from the coordinates script: "${stdout.trim()}".`);
+                vscode.window.showErrorMessage(LocaleManager.getInstance().t('coords.unexpectedOutput', { output: stdout.trim() }));
                 return undefined;
             }
 
             return { x: values[0], y: values[1], z: values[2], angle: values[3] };
         } catch (err) {
-            vscode.window.showErrorMessage(`Failed to run the coordinates script: ${(err as Error).message}`);
+            vscode.window.showErrorMessage(LocaleManager.getInstance().t('coords.runFailed', { message: (err as Error).message }));
             return undefined;
         }
     }

@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { Token } from '../../lexer/token';
 import { TokenKind } from '../../lexer/token-kind';
 import { Tokenizer } from '../../lexer/tokenizer';
-import { SyntaxColorManager } from '../../managers/syntax-color-manager';
+import { SyntaxColorManager, SyntaxColorStyle } from '../../managers/syntax-color-manager';
 import { BaseProvider } from '../base';
 import { ClassProvider } from '../class/class';
 import { EnumProvider } from '../enum/enum';
@@ -13,6 +13,7 @@ const CATEGORY_COMMENTS = 'comments';
 const CATEGORY_LABELS = 'labels';
 const CATEGORY_VARIABLES = 'variables';
 const CATEGORY_KEYWORDS = 'keywords';
+const CATEGORY_KEYWORDS_FLOW = 'keywordsFlow';
 const CATEGORY_NUMBERS = 'numbers';
 const CATEGORY_STRINGS = 'strings';
 const CATEGORY_CLASSES = 'classes';
@@ -20,6 +21,8 @@ const CATEGORY_COMMANDS = 'commands';
 const CATEGORY_ENUMS = 'enums';
 const CATEGORY_MODELS = 'models';
 const CATEGORY_DIRECTIVES = 'directives';
+const CATEGORY_PLAINTEXT = 'plainText';
+const CATEGORY_SYMBOLS = 'symbols';
 
 // Misma lista de palabras clave que usa la gramática (syntax/sb4.tm-language.json).
 export const KEYWORDS = new Set([
@@ -30,6 +33,16 @@ export const KEYWORDS = new Set([
 	'repeat', 'return', 'shortstring', 'string', 'stdcall', 'sqr', 'switch', 'then', 'thiscall',
 	'to', 'true', 'unknown', 'until', 'var', 'while', 'writemem'
 ]);
+
+// Palabras de control de flujo / estructuras de alto nivel (if/then/else,
+// while/end, switch/case, wait, etc.) con color aparte del keyword normal.
+export const KEYWORDS_FLOW = new Set([
+	'if', 'then', 'else', 'elsif', 'endif', 'while', 'end', 'repeat', 'until', 'do',
+	'switch', 'case', 'default', 'break', 'continue', 'for', 'return', 'wait'
+]);
+
+// Símbolos de programación (operadores de comparación/asignación/aritméticos).
+const symbolRe = /==|!=|>=|<=|[+\-*/<>=]/g;
 
 const DEBOUNCE_MS = 400;
 
@@ -50,7 +63,7 @@ export class SyntaxColoringProvider extends Singleton {
 	private decorations = new Map<string, vscode.TextEditorDecorationType>();
 	private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-	private commandNames = new Set<string>();
+	private memberNames = new Set<string>();
 	private className = new Set<string>();
 	private enumNames = new Set<string>();
 
@@ -71,13 +84,13 @@ export class SyntaxColoringProvider extends Singleton {
 	}
 
 	private buildLookups() {
-		this.commandNames.clear();
+		// La categoría "commands" colorea SOLO los métodos de clase (el miembro
+		// de "char.IsInAir" / "camera.Shake"), no los nombres sueltos de
+		// opcodes (wait, load_scene, create_char) que van sin color.
+		this.memberNames.clear();
 		for (const command of CommandManager.getInstance().getCommands().values()) {
-			if (command.name) {
-				this.commandNames.add(command.name.toLowerCase());
-			}
 			if (command.member) {
-				this.commandNames.add(command.member.toLowerCase());
+				this.memberNames.add(command.member.toLowerCase());
 			}
 		}
 
@@ -180,12 +193,20 @@ export class SyntaxColoringProvider extends Singleton {
 		}
 	}
 
-	private createDecoration(style: { color?: string; bold?: boolean; italic?: boolean; underline?: boolean }): vscode.TextEditorDecorationType {
+	private createDecoration(style: SyntaxColorStyle): vscode.TextEditorDecorationType {
+		const textDecorations: string[] = [];
+		if (style.underline) {
+			textDecorations.push('underline');
+		}
+		if (style.strikethrough) {
+			textDecorations.push('line-through');
+		}
+
 		return vscode.window.createTextEditorDecorationType({
 			color: style.color,
 			fontWeight: style.bold ? 'bold' : undefined,
 			fontStyle: style.italic ? 'italic' : undefined,
-			textDecoration: style.underline ? 'underline' : undefined
+			textDecoration: textDecorations.length ? textDecorations.join(' ') : undefined
 		});
 	}
 
@@ -238,11 +259,13 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 			exclude(start, start + match[0].length);
 		}
 
-		// Números hexadecimales (0x...)
+		// Números hexadecimales (0x...) — categoría números. Se excluyen del
+		// pasaje del tokenizer para que no los repinte el dígito suelto "0".
 		const hexRe = /\b0x[0-9A-Fa-f]+\b/g;
 		for (const match of text.matchAll(hexRe)) {
 			const start = match.index ?? 0;
 			push(CATEGORY_NUMBERS, range(start, start + match[0].length));
+			exclude(start, start + match[0].length);
 		}
 
 		// Directivas: {$...}
@@ -254,10 +277,12 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 			exclude(start, start + match[0].length);
 		}
 
-		// Por línea: dirección de opcode al inicio y declaraciones [var nombre: Tipo].
+		// Por línea: dirección de opcode al inicio y declaraciones [var nombre: Tipo]
+		// (el nombre puede ser "0@", "$var" o un identificador; "var" en
+		// mayúsculas o minúsculas).
 		const lines = text.split(/\r?\n/);
 		const addressRe = /^(\s*[0-9A-Fa-f]{2,4}\s*:)/;
-		const varDeclRe = /\[var\s+([A-Za-z_]\w*)\s*:\s*([A-Za-z_]\w*)\]/g;
+		const varDeclRe = /\[var\s+([^\s:]+?)\s*:\s*([A-Za-z_]\w*)\]/gi;
 
 		for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 			const lineText = lines[lineIndex];
@@ -265,8 +290,11 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 
 			const addressMatch = addressRe.exec(lineText);
 			if (addressMatch) {
+				// El código numérico del opcode (0005:, 0861:...) es texto base
+				// (categoría plainText), NO un comando (solo los métodos de clase
+				// como char.IsInAir llevan la categoría commands).
 				const r = range(lineStart, lineStart + addressMatch[1].length);
-				push(CATEGORY_COMMANDS, r);
+				push(CATEGORY_PLAINTEXT, r);
 				exclude(lineStart, lineStart + addressMatch[1].length);
 			}
 
@@ -286,6 +314,34 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 		}
 
 		exclusions.sort((a, b) => a.start - b.start);
+
+		// Símbolos de programación (==, =, >, <, +, -, *, /...). Se pintan
+		// con su categoría propia; se saltea comentarios, directivas, hex,
+		// dirección de opcode, [var...] y STRINGS (para no repintarlos).
+		const stringRe = /"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g;
+		const symbolBlockers: { start: number; end: number }[] = [];
+
+		for (const match of text.matchAll(stringRe)) {
+			const start = match.index ?? 0;
+			symbolBlockers.push({ start, end: start + match[0].length });
+		}
+		symbolBlockers.push(...exclusions);
+		symbolBlockers.sort((a, b) => a.start - b.start);
+
+		let blockerIdx = 0;
+		for (const match of text.matchAll(symbolRe)) {
+			const start = match.index ?? 0;
+			const end = start + match[0].length;
+
+			while (blockerIdx < symbolBlockers.length && symbolBlockers[blockerIdx].end <= start) {
+				blockerIdx++;
+			}
+			if (blockerIdx < symbolBlockers.length && symbolBlockers[blockerIdx].start < end) {
+				continue;
+			}
+
+			push(CATEGORY_SYMBOLS, range(start, end));
+		}
 
 		// Tokens principales. Los tokens vienen en orden ascendente de offset,
 		// así que las exclusiones ordenadas se barren con un único puntero.
@@ -341,11 +397,18 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 			case TokenKind.Identifier: {
 				const word = token.text.toLowerCase();
 
+				if (KEYWORDS_FLOW.has(word)) {
+					// Palabras de control de flujo / estructuras de alto nivel
+					// (if, then, while, end, switch, case, wait...) con color
+					// aparte del keyword "normal".
+					return CATEGORY_KEYWORDS_FLOW;
+				}
+
 				if (KEYWORDS.has(word)) {
 					return CATEGORY_KEYWORDS;
 				}
 
-				if (this.commandNames.has(word)) {
+				if (this.memberNames.has(word)) {
 					return CATEGORY_COMMANDS;
 				}
 
@@ -357,7 +420,9 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 					return CATEGORY_ENUMS;
 				}
 
-				return undefined;
+				// Texto base sin relación con objetos (nombres de opcodes
+				// sueltos como wait/load_scene/create_char, etc.).
+				return CATEGORY_PLAINTEXT;
 			}
 
 			default:

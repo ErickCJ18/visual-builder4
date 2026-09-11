@@ -10,6 +10,17 @@ export async function isFileExists(path: string): Promise<boolean> {
     }
 }
 
+export async function isBinaryFile(filePath: string): Promise<boolean> {
+    const handle = await fsp.open(filePath, 'r');
+    try {
+        const buffer = Buffer.alloc(4096);
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+        return buffer.subarray(0, bytesRead).includes(0);
+    } finally {
+        await handle.close();
+    }
+}
+
 export async function readJsonFile(filePath: string): Promise<any> {
     return JSON.parse(await fsp.readFile(filePath, 'utf-8'));
 };

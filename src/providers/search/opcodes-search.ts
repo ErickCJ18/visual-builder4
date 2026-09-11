@@ -1,6 +1,7 @@
 import { CommandManager, FolderManager, GtaVersionManager, StorageDataManager, WebViewHandler, WebViewManager } from '@managers';
 import { BaseProvider } from '@providers';
 import { Command, CommandType, MessageCommand, SEARCH_TYPE, Singleton, StorageKey } from '@utils';
+import { LocaleManager } from '@i18n';
 import * as vscode from 'vscode';
 import { GtaVersionButton } from '../../components/gta-version-button.component';
 
@@ -29,7 +30,7 @@ export class OpcodesSearch extends Singleton {
 
             const iconPath = this.webViewManager.getFileUri(this.baseProvider.context.asAbsolutePath('images/logo.jpg'));
 
-            this.webViewManager.createPanel('opcodes-view', 'SB4: Search Opcodes', iconPath);
+            this.webViewManager.createPanel('opcodes-view', LocaleManager.getInstance().t('ow.panelTitle'), iconPath);
 
             this.setupWebViewHandlers();
             await this.updateWebviewContent();
@@ -79,7 +80,7 @@ export class OpcodesSearch extends Singleton {
             .map((command) => {
                 let commandFormat = command.format?.[this.commandType];
 
-                if (command.attrs?.isUnsupported) {
+                if (command.attrs?.isUnsupported || command.attrs?.isNop) {
                     commandFormat = `<s>${commandFormat}</s>`;
                 }
 

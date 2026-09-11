@@ -1,16 +1,14 @@
 import { CommandManager, GtaVersionManager, StorageDataManager } from '@managers';
 import { ClassProvider, CommandFormatterProvider, EnumProvider, ModelProvider, OpcodeProvider, SyntaxColoringProvider } from '@providers';
 import { CONFIG, Singleton, StorageKey } from '@utils';
+import { LocaleManager } from '@i18n';
 import * as vscode from 'vscode';
 import { GtaVersion } from '@managers';
 import { OpcodesSearch } from '../providers/search/opcodes-search';
 
 export class GtaVersionButton extends Singleton {
     private static readonly BUTTON_ID = 'sb4.gtaVersions';
-    private static readonly BUTTON_TOOLTIP = 'Open GTA Versions';
-    private static readonly BUTTON_TEXT_DEFAULT = 'SB4 (Select version)';
-    private static readonly BUTTON_TEXT_FORMAT = (version: string) =>
-        `SB4 (${version})`;
+    private static readonly t = (key: string, params?: Record<string, string>) => LocaleManager.getInstance().t(key, params);
 
     private context!: vscode.ExtensionContext;
     private button!: vscode.StatusBarItem;
@@ -30,7 +28,7 @@ export class GtaVersionButton extends Singleton {
 
     private createStatusBarItem(): vscode.StatusBarItem {
         const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-        button.tooltip = GtaVersionButton.BUTTON_TOOLTIP;
+        button.tooltip = GtaVersionButton.t('statusBar.tooltip');
         button.command = GtaVersionButton.BUTTON_ID;
         this.context.subscriptions.push(button);
         return button;
@@ -38,8 +36,8 @@ export class GtaVersionButton extends Singleton {
 
     private updateButtonText(version: string): void {
         this.button.text = version
-            ? GtaVersionButton.BUTTON_TEXT_FORMAT(version)
-            : GtaVersionButton.BUTTON_TEXT_DEFAULT;
+            ? GtaVersionButton.t('statusBar.versionText', { version })
+            : GtaVersionButton.t('statusBar.defaultText');
     }
 
     private registerCommand(): void {
@@ -52,9 +50,7 @@ export class GtaVersionButton extends Singleton {
     }
 
     public async showErrorMessageNotFoundAnyVersion() {
-        await vscode.window.showErrorMessage(
-            "SB4 folder doesn't contain any of GTA Version"
-        );
+        await vscode.window.showErrorMessage(GtaVersionButton.t('gtaVersion.none'));
     }
 
     public async handleVersionSelection() {
@@ -63,7 +59,7 @@ export class GtaVersionButton extends Singleton {
         try {
             versions = await this.gtaVersionManager.parseVersions();
         } catch (err) {
-            await vscode.window.showErrorMessage(`Error reading SB4 folder: ${err}`);
+            await vscode.window.showErrorMessage(GtaVersionButton.t('gtaVersion.readError', { error: String(err) }));
             return;
         }
 
@@ -80,7 +76,7 @@ export class GtaVersionButton extends Singleton {
         const gtaVersion = this.storageDataManager.get(StorageKey.GtaVersion) as string;
 
         if (selected.label === gtaVersion) {
-            await vscode.window.showInformationMessage(`GTA version "${selected.label}" is already selected.`);
+            await vscode.window.showInformationMessage(GtaVersionButton.t('gtaVersion.alreadySelected', { label: selected.label }));
             return;
         }
 
@@ -91,9 +87,9 @@ export class GtaVersionButton extends Singleton {
 		try {
 			await this.reloadOpcodes();
 			await OpcodesSearch.getInstance().updateWebviewContent(true);
-			await vscode.window.showInformationMessage(`GTA version "${selected.label}" loaded.`);
+			await vscode.window.showInformationMessage(GtaVersionButton.t('gtaVersion.loaded', { label: selected.label }));
 		} catch (err) {
-			await vscode.window.showErrorMessage(`Failed to load opcodes for version "${selected.label}": ${err}`);
+			await vscode.window.showErrorMessage(GtaVersionButton.t('gtaVersion.loadFailed', { label: selected.label, error: String(err) }));
 		}
 	}
 

@@ -18,6 +18,5 @@ export * from './search/base-search';
 export * from './search/definition-search';
 export * from './search/opcodes-search';
 export * from './search/reference-search';
-export * from './snippet/snippet-completion';
 export * from './syntax/syntax-coloring-provider';
 

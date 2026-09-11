@@ -1,10 +1,73 @@
 {
-    "SB4": {
-      "prefix": "FOR",
-      "body": [
-        "FOR \\$${1:temp_int} = ${2:0} to ${3}",
-        "\t${4}",
-        "end"
-      ]
+    "IF-THEN-END": {
+        "prefix": "if",
+        "body": [
+            "if",
+            "${1:condition}",
+            "then",
+            "\t${2:then}",
+            "end"
+        ],
+        "description": "Bloque condicional IF / THEN / END"
+    },
+    "WHILE-TRUE-END": {
+        "prefix": "while",
+        "body": [
+            "while true",
+            "\t${1:body}",
+            "end"
+        ],
+        "description": "Bucle WHILE TRUE / END (no olvides el wait)"
+    },
+    "REPEAT-UNTIL": {
+        "prefix": "repeat",
+        "body": [
+            "repeat",
+            "\t${1:body}",
+            "until ${2:condition}"
+        ],
+        "description": "Bucle REPEAT / UNTIL"
+    },
+    "SWITCH-CASE-END": {
+        "prefix": "switch",
+        "body": [
+            "switch ${1:value}",
+            "\tcase ${2:case}",
+            "\t\t${3:body}",
+            "\tdefault",
+            "\t\t${4:default}",
+            "end"
+        ],
+        "description": "Bloque SWITCH / CASE / DEFAULT / END"
+    },
+    "FOR-END": {
+        "prefix": "for",
+        "body": [
+            "for \\$${1:temp_int} = ${2:0} to ${3}",
+            "\t${4:body}",
+            "end"
+        ],
+        "description": "Bucle FOR / END"
+    },
+    "FUNCTION-END": {
+        "prefix": "function",
+        "body": [
+            "function ${1:name}(${2:params})",
+            "\t${3:body}",
+            "end"
+        ],
+        "description": "Funci\u00f3n de alto nivel (CLEO 5+)"
+    },
+    "CLEO Script": {
+        "prefix": "cleo",
+        "body": [
+            "{\\$CLEO .cs}",
+            "0000: nop",
+            "",
+            "\t${1:c\u00f3digo del script}",
+            "",
+            "0A93: terminate_this_custom_script"
+        ],
+        "description": "Plantilla de script CLEO (.sb que compila a .cs)"
     }
 }

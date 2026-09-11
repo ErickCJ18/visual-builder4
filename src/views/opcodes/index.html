@@ -7,16 +7,16 @@
 </head>
 
 <body>
-    <h1>Opcodes List</h1>
+    <h1 id="ow-title">Opcodes List</h1>
     <div class="combobox-container">
-        <label for="search-type">Choose a search type:</label>
+        <label for="search-type" id="ow-choose">Choose a search type:</label>
         <select name="search-types" id="search-display-type" class="search-display-type">
-            <option value="Opcodes">Opcodes</option>
-            <option value="Classes/members">Classes/members</option>
+            <option value="Opcodes" id="ow-opt-opcodes">Opcodes</option>
+            <option value="Classes/members" id="ow-opt-classes">Classes/members</option>
         </select>
     </div>
     <div class="input-container">
-        <label for="opcode-filter">Filter Opcodes:</label>
+        <label for="opcode-filter" id="ow-filter-label">Filter Opcodes:</label>
         <div class="input-with-text">
             <input type="text" id="opcode-filter" placeholder="Enter opcode name, class, method or address">
             <span class="opcode-matches">Matches: 0</span>
@@ -24,6 +24,7 @@
     </div>
     <div class="no-results" id="no-results">No results</div>
     <div class="opcode-list" id="opcode-list"></div>
+    <script>{{localeScript}}</script>
     <script src="{{jsUri}}"></script>
 </body>
 

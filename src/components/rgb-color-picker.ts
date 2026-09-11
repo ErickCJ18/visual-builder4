@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
+import { LocaleManager } from '@i18n';
 
 const PRESET_COLORS: { name: string; hex: string }[] = [
-	{ name: 'Negro', hex: '#000000' }, { name: 'Gris oscuro', hex: '#6A6A6A' }, { name: 'Plata', hex: '#C0C0C0' }, { name: 'Blanco', hex: '#FFFFFF' },
-	{ name: 'Rojo', hex: '#E06C75' }, { name: 'Naranja', hex: '#D19A66' }, { name: 'Amarillo', hex: '#E5C07B' }, { name: 'Dorado', hex: '#FFFF00' },
-	{ name: 'Verde', hex: '#98C379' }, { name: 'Verde oscuro', hex: '#6A9955' }, { name: 'Verde menta', hex: '#B8D7A3' }, { name: 'Teal', hex: '#008080' },
-	{ name: 'Cian', hex: '#56B6C2' }, { name: 'Azul', hex: '#61AFEF' }, { name: 'Azul claro', hex: '#98CFE6' }, { name: 'Azul oscuro', hex: '#528BFF' },
-	{ name: 'Violeta', hex: '#C678DD' }, { name: 'Púrpura', hex: '#AB76A6' }, { name: 'Magenta', hex: '#FF00FF' }, { name: 'Marrón', hex: '#A0522D' }
+	{ name: 'cp.c.black', hex: '#000000' }, { name: 'cp.c.darkGray', hex: '#6A6A6A' }, { name: 'cp.c.silver', hex: '#C0C0C0' }, { name: 'cp.c.white', hex: '#FFFFFF' },
+	{ name: 'cp.c.red', hex: '#E06C75' }, { name: 'cp.c.orange', hex: '#D19A66' }, { name: 'cp.c.yellow', hex: '#E5C07B' }, { name: 'cp.c.gold', hex: '#FFFF00' },
+	{ name: 'cp.c.green', hex: '#98C379' }, { name: 'cp.c.darkGreen', hex: '#6A9955' }, { name: 'cp.c.mint', hex: '#B8D7A3' }, { name: 'cp.c.teal', hex: '#008080' },
+	{ name: 'cp.c.cyan', hex: '#56B6C2' }, { name: 'cp.c.blue', hex: '#61AFEF' }, { name: 'cp.c.lightBlue', hex: '#98CFE6' }, { name: 'cp.c.darkBlue', hex: '#528BFF' },
+	{ name: 'cp.c.violet', hex: '#C678DD' }, { name: 'cp.c.purple', hex: '#AB76A6' }, { name: 'cp.c.magenta', hex: '#FF00FF' }, { name: 'cp.c.brown', hex: '#A0522D' }
 ];
 
 function toHex(n: number): string {
@@ -67,12 +68,13 @@ export async function pickRgbColor(title: string, initialHex?: string): Promise<
 }
 
 function getHtml(title: string, initial: { r: number; g: number; b: number }): string {
+	const t = (key: string) => LocaleManager.getInstance().t(key);
 	const presetButtons = PRESET_COLORS.map(color =>
-		`<button class="swatch" title="${color.name}" data-hex="${color.hex}" style="background: ${color.hex}"></button>`
+		`<button class="swatch" title="${t(color.name)}" data-hex="${color.hex}" style="background: ${color.hex}"></button>`
 	).join('\n');
 
 	return `<!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 	<meta charset="UTF-8">
 	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
@@ -105,8 +107,8 @@ function getHtml(title: string, initial: { r: number; g: number; b: number }): s
 	<div class="row"><label></label><input type="text" id="hex" value="#${toHex(initial.r)}${toHex(initial.g)}${toHex(initial.b)}"></div>
 	<div class="preview"><div class="preview-box" id="preview"></div><span id="hexLabel"></span></div>
 	<div class="buttons">
-		<button class="btn secondary" id="cancel">Cancelar</button>
-		<button class="btn" id="accept">Aceptar</button>
+		<button class="btn secondary" id="cancel">${t('cp.cancel')}</button>
+		<button class="btn" id="accept">${t('cp.accept')}</button>
 	</div>
 	<script>
 		(function () {

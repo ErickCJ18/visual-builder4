@@ -25,11 +25,6 @@ const prefixCharTokens: Record<string, TokenKind> = {
 	'#': TokenKind.Model
 };
 
-const postfixCharTokens: Record<string, TokenKind> = {
-	'@': TokenKind.LocalVar,
-	'ifsv': TokenKind.ArraySize
-};
-
 const isSpaceChar = (c: string): boolean => c === ' ' || c === '\t' || c === '\r';
 const isDigitChar = (c: string): boolean => c >= '0' && c <= '9';
 const isWordChar = (c: string): boolean =>
@@ -64,23 +59,60 @@ export class Tokenizer extends Singleton {
 		return col;
 	}
 
-	private pushPostfix(line: string, lineNum: number, col: number) {
+	/**
+	 * Detecta un número con postfijo (variable local "25@" o tamaño de array).
+	 * Devuelve la nueva posición si hubo postfijo, o undefined si son dígitos
+	 * "planos" (en ese caso el llamador los trata como número/float).
+	 */
+	private tryPushPostfix(line: string, lineNum: number, col: number): number | undefined {
 		const start = col;
+		let cursor = col;
 
-		while (col < line.length && isDigitChar(line[col])) {
-			col++;
-
-			for (const [str, kind] of Object.entries(postfixCharTokens)) {
-				for (const char of str) {
-					if (line[col] === char) {
-						this.push(kind, line.slice(start, col + 1), lineNum + 1, start);
-						col++;
-						break;
-					}
-				}
-			}
+		while (cursor < line.length && isDigitChar(line[cursor])) {
+			cursor++;
 		}
 
+		const next = line[cursor];
+
+		if (next === '@') {
+			this.push(TokenKind.LocalVar, line.slice(start, cursor + 1), lineNum + 1, start);
+			return cursor + 1;
+		}
+
+		// Postfijo de tamaño de array ("ifsv").
+		if (next !== undefined && 'ifsv'.includes(next)) {
+			this.push(TokenKind.ArraySize, line.slice(start, cursor + 1), lineNum + 1, start);
+			return cursor + 1;
+		}
+
+		return undefined;
+	}
+
+	/**
+	 * Consume un número entero o decimal (p.ej. "90.5") y lo emite como token.
+	 */
+	private pushNumberOrFloat(line: string, lineNum: number, col: number): number {
+		const start = col;
+		let hasDot = false;
+
+		while (col < line.length) {
+			const c = line[col];
+
+			if (isDigitChar(c)) {
+				col++;
+				continue;
+			}
+
+			if (c === '.' && !hasDot && isDigitChar(line[col + 1] ?? '')) {
+				hasDot = true;
+				col++;
+				continue;
+			}
+
+			break;
+		}
+
+		this.push(hasDot ? TokenKind.Float : TokenKind.Number, line.slice(start, col), lineNum + 1, start);
 		return col;
 	}
 
@@ -132,41 +164,16 @@ export class Tokenizer extends Singleton {
 					continue;
 				}
 
-				// local var / array size
+				// local var "25@" / array size (si hay postfijo), o número
+				// plano (entero/float) si no lo hay.
 				if (isDigitChar(char)) {
-					col = this.pushPostfix(line, lineNum, col);
+					col = this.tryPushPostfix(line, lineNum, col) ?? this.pushNumberOrFloat(line, lineNum, col);
 					continue;
 				}
 
 				// identifier
 				if (isIdentStartChar(char)) {
 					col = this.pushPrefix(line, TokenKind.Identifier, lineNum, col);
-					continue;
-				}
-
-				// number / float
-				if (isDigitChar(char)) {
-					const start = col;
-					let hasDot = false;
-
-					while (col < line.length) {
-						const c = line[col];
-
-						if (isDigitChar(c)) {
-							col++;
-							continue;
-						}
-
-						if (c === '.' && !hasDot) {
-							hasDot = true;
-							col++;
-							continue;
-						}
-
-						break;
-					}
-
-					this.push(hasDot ? TokenKind.Float : TokenKind.Number, line.slice(start, col), lineNum + 1, start);
 					continue;
 				}
 

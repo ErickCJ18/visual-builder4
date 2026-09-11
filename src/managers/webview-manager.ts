@@ -1,6 +1,7 @@
 import { promises as fsp } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { LocaleManager } from '@i18n';
 
 export interface WebViewHandler {
     command: string;
@@ -54,9 +55,12 @@ export class WebViewManager {
 
         let htmlContent = await fsp.readFile(templatePath, 'utf-8');
 
+        const localeScript = `window.VB4_LOCALE = ${JSON.stringify(LocaleManager.getInstance().getCatalog())};`;
+
         htmlContent = htmlContent
             .replace(/{{cssUri}}/g, this.getResourceUri('styles.css'))
-            .replace(/{{jsUri}}/g, this.getResourceUri('script.js'));
+            .replace(/{{jsUri}}/g, this.getResourceUri('script.js'))
+            .replace(/{{localeScript}}/g, localeScript);
 
         this.panel!.webview.html = htmlContent;
     }

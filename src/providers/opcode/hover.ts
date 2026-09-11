@@ -30,8 +30,19 @@ export class OpcodeHoverProvider extends Singleton {
 
 				const format = (element.format?.[CommandType.OPCODE] ?? '');
 
+				const warnings: string[] = [];
+				if (element.attrs?.isUnsupported) {
+					warnings.push('⚠️ Unsupported opcode in this GTA mode — the game ignores it.');
+				}
+				if (element.attrs?.isNop) {
+					warnings.push('⚠️ NOP opcode (no implementation) — do not use.');
+				}
+
 				const markdown = new vscode.MarkdownString();
 				markdown.appendMarkdown(`${format}\n\n${element.shortDesc}`);
+				if (warnings.length > 0) {
+					markdown.appendMarkdown(`\n\n${warnings.join('\n\n')}`);
+				}
 
 				return new vscode.Hover(markdown, wordRange);
 			}

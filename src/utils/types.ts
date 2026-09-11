@@ -10,6 +10,7 @@ export enum MessageCommand {
 export enum StorageKey {
     GtaVersion = 'gtaVersion',
     Sb4FolderPath = 'sb4FolderPath',
+    CompileExtPref = 'compileExtPref',
 };
 
 export interface CommandArgs {
@@ -32,5 +33,5 @@ export interface Command {
     input?: CommandArgs[];
     output?: CommandArgs[];
     shortDesc: string;
-    attrs?: { isUnsupported?: boolean, isKeyWord?: boolean };
+    attrs?: { isUnsupported?: boolean, isNop?: boolean, isKeyWord?: boolean };
 };
