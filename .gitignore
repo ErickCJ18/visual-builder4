@@ -5,3 +5,4 @@ syntax/sb4.tm-language-functions.json
 package-lock.json
 *.tsbuildinfo
 dist
+contexto-visual-builder4.md

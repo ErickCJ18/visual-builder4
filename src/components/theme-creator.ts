@@ -24,9 +24,11 @@ const STYLE_PROPS: Array<{ prop: 'bold' | 'italic' | 'underline' | 'strikethroug
  * Ejemplo de código SB para el pane de vista previa. Cada token indica su
  * categoría (c). Los tokens son fieles al clasificador real:
  *  - plainText: código numérico del opcode ("0005:") y nombres sueltos de
- *    opcodes (wait-style base: load_scene, create_char...) sin categoría.
- *  - keywordsFlow: control de flujo / estructuras (if, then, switch, case,
- *    end, wait...) — color aparte del keyword normal.
+ *    opcodes (wait, load_scene, create_char...) sin categoría.
+ *  - keywordsIf: if/then/else/end (condicionales).
+ *  - keywordsSwitch: switch/case/default.
+ *  - keywordsLoop: while/for/repeat/until/do (+break/continue/return).
+ *  - keywordsBoolean: true/false.
  *  - symbols: operadores (==, +=, ...).
  *  - commands: SOLO métodos de clase (char.IsInAir).
  *  - classes/enums/models: nombres reales verificados contra
@@ -37,17 +39,20 @@ const SAMPLE_CODE: Array<Array<{ t: string; c: string }>> = [
 	[{ t: '{$CLEO include}', c: 'directives' }],
 	[{ t: '// courier route: 3 colored exits', c: 'comments' }],
 	[{ t: ':ROUTE_START', c: 'labels' }],
-	[{ t: 'wait ', c: 'keywordsFlow' }, { t: '0', c: 'numbers' }],
-	[{ t: 'if', c: 'keywordsFlow' }, { t: ' $SOME_FLAG', c: 'variables' }, { t: ' ==', c: 'symbols' }, { t: ' 1', c: 'numbers' }, { t: ' then', c: 'keywordsFlow' }],
-	[{ t: 'switch', c: 'keywordsFlow' }, { t: ' 0@', c: 'variables' }],
-	[{ t: 'case', c: 'keywordsFlow' }, { t: ' 3', c: 'numbers' }, { t: ':', c: 'labels' }],
+	[{ t: 'wait ', c: 'plainText' }, { t: '0', c: 'numbers' }],
+	[{ t: 'if', c: 'keywordsIf' }, { t: ' $SOME_FLAG', c: 'variables' }, { t: ' ==', c: 'symbols' }, { t: ' 1', c: 'numbers' }, { t: ' then', c: 'keywordsIf' }],
+	[{ t: 'switch', c: 'keywordsSwitch' }, { t: ' 0@', c: 'variables' }],
+	[{ t: 'case', c: 'keywordsSwitch' }, { t: ' 3', c: 'numbers' }, { t: ':', c: 'labels' }],
+	[{ t: 'while', c: 'keywordsLoop' }, { t: ' true', c: 'keywordsBoolean' }],
+	[{ t: 'repeat', c: 'keywordsLoop' }, { t: ' ', c: 'plainText' }, { t: 'until', c: 'keywordsLoop' }],
+	[{ t: 'for', c: 'keywordsLoop' }, { t: ' 0@', c: 'variables' }, { t: ' to', c: 'keywordsLoop' }, { t: ' 10', c: 'numbers' }],
 	[{ t: '0005:', c: 'plainText' }, { t: ' $COUNTER', c: 'variables' }, { t: ' +=', c: 'symbols' }, { t: ' 1', c: 'numbers' }],
 	[{ t: '0861:', c: 'plainText' }, { t: ' 0@', c: 'variables' }, { t: ' += offset', c: 'symbols' }, { t: ' 1', c: 'numbers' }, { t: ' 2', c: 'numbers' }, { t: ' 3', c: 'numbers' }, { t: ' ', c: 'plainText' }, { t: '90.5', c: 'numbers' }],
 	[{ t: 'load_scene ', c: 'plainText' }, { t: '"las2.img"', c: 'strings' }],
 	[{ t: 'create_char ', c: 'plainText' }, { t: 'CivMale', c: 'enums' }, { t: ' #BMX', c: 'models' }],
-	[{ t: '0407:', c: 'plainText' }, { t: ' char', c: 'classes' }, { t: '.IsInAir', c: 'commands' }, { t: ' $PLAYER_ACTOR', c: 'variables' }],
+	[{ t: '0407:', c: 'plainText' }, { t: ' char', c: 'classes' }, { t: '.', c: 'plainText' }, { t: 'IsInAir', c: 'commands' }, { t: ' $PLAYER_ACTOR', c: 'variables' }],
 	[{ t: '[var', c: 'plainText' }, { t: ' handle', c: 'variables' }, { t: ': ', c: 'plainText' }, { t: 'Char', c: 'classes' }, { t: ']', c: 'plainText' }],
-	[{ t: 'end', c: 'keywordsFlow' }]
+	[{ t: 'end', c: 'keywordsIf' }]
 ];
 
 /**
@@ -200,7 +205,7 @@ function getHtml(styleProps: typeof STYLE_PROPS): string {
 			const L = ${JSON.stringify(LocaleManager.getInstance().getCatalog())};
 			function t(key, params) {
 				let s = L[key] || key;
-				if (params) { s = s.replace(/\{(\w+)\}/g, (m, n) => (params[n] !== undefined ? String(params[n]) : m)); }
+				if (params) { s = s.replace(/\\{(\\w+)\\}/g, (m, n) => (params[n] !== undefined ? String(params[n]) : m)); }
 				return s;
 			}
 			const vscode = acquireVsCodeApi();
@@ -254,7 +259,7 @@ function getHtml(styleProps: typeof STYLE_PROPS): string {
 			}
 
 			function capitalize(cat) {
-				return cat.charAt(0).toUpperCase() + cat.slice(1);
+				return cat.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
 			}
 
 			function buildRow(cat, style, defaults) {

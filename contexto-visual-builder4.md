@@ -49,9 +49,10 @@ idiomas incorporados en/es + idiomas creados por el usuario vía export/import.
 
 ## Colores de sintaxis
 
-- **15 categorías**: comments, labels, variables, keywords, **keywordsFlow**, numbers, strings, models, classes, commands, directives, constants, enums, **plainText**, **symbols**.
-  - `keywordsFlow` = palabras de control/estructura (if, then, else, while, end, switch, case, repeat, until, do, break, continue, for, return, **wait**…) con color aparte del keyword normal.
-  - `plainText` = texto base sin relación con objetos: código numérico del opcode (`0005:`), nombres sueltos de opcodes (load_scene, create_char…), etc.
+- **18 categorías**: comments, labels, variables, keywords, **keywordsIf**, **keywordsSwitch**, **keywordsLoop**, **keywordsBoolean**, numbers, strings, models, classes, commands, directives, constants, enums, **plainText**, **symbols**.
+  - `keywordsIf` = `if/then/else/elsif/endif/end`. `keywordsSwitch` = `switch/case/default`. `keywordsLoop` = `while/for/repeat/until/do/downto/from/to/break/continue/return`. `keywordsBoolean` = `true/false`.
+  - `wait` ya NO es flow: es un nombre de opcode suelto → `plainText` como load_scene/create_char.
+  - `plainText` = texto base sin relación con objetos: código numérico del opcode (`0005:`), nombres sueltos de opcodes (wait, load_scene, create_char…), etc.
   - `symbols` = operadores de programación: `==`, `!=`, `>=`, `<=`, `=`, `<`, `>`, `+`, `-`, `*`, `/`.
 - **Formato INI** (`[syntax]`): `category.color=#rrggbb` (o decimal ARGB), `category.style.{bold,italic,underline,strikethrough}=1/0`.
 - `resolveCandidates()` (NO async): `sb4.colors.iniPath` configurado → `<carpeta SB4>\krauber.ini` → ejemplo incluido `syntax\sb-colors.ini`.
@@ -61,7 +62,8 @@ idiomas incorporados en/es + idiomas creados por el usuario vía export/import.
   - `commands` colorea **SOLO métodos de clase** (`memberNames`, ej. `char.IsInAir`, `camera.Shake`). Los nombres sueltos de opcodes NO se colorean como commands.
   - Dirección al inicio de línea `^(\s*[0-9A-Fa-f]{2,4}:)` → **`plainText`** (el opcode es texto base, no comando).
   - Símbolos por regex `==|!=|>=|<=|[+\-*/<>=]` → bien `symbols`, salteando comentarios, directivas, hex, dirección, `[var…]` y **strings** (lista `symbolBlockers` = exclusiones + rangos de strings). Adjuntos a números (`-1`, `+= 1`) → rangos separados, sin conflicto.
-  - `classifyToken`: keywordsFlow → keywords → members (commands) → class (classes) → enum (enums) → **fallback `plainText`** para identificadores sin clasificar.
+  - `classifyToken`: keywordsIf → keywordsSwitch → keywordsLoop → keywordsBoolean → keywords → members (commands) → class (classes) → enum (enums) → **fallback `plainText`** para identificadores sin clasificar.
+  - `.` (operador de acceso, `char.IsInAir`) siempre → **`plainText`** (TokenKind.Dot); el float `90.5` no genera Dot.
   - `classes`: `[var X: Tipo]` (tipo) y nombres de clase reales (`char`, `camera`). `enums`: nombres + elementos de `enums.txt` (ej. `CivMale` de `PedType`).
   - `comments`: `//`, `/* */`, `{...}` (no `{$`); `directives`: `{$...}`; `labels`: `@X` / `:X`; `models`: `#X`; `variables`: `$X` / `25@`; `strings`: `"..."`/`'...'`.
   - `varDeclRe` (`/gi`): `[var nombre: Tipo]` con nombre `0@`/`$x`/identificador → nombre=variables, tipo=classes; el bloque se excluye del pasaje general.
@@ -73,13 +75,15 @@ idiomas incorporados en/es + idiomas creados por el usuario vía export/import.
 - **Import SB4 theme** (`sb4.importTheme`): `listThemes()` lee `[meta] name` de `<SB4>\themes\*.ini` (37 temas: Krauber, Material One Dark, VS Dark…) + ítem Browse. `convertTheme` resuelve decimal/`0x…`/`#hex`/`[variables]` (cadena máx. 8) y escribe convertido a `sb4-colors.ini` (`ensureEditableIniPath`), activándolo y refrescando al instante.
   - **Sin dependencia de SB4**: eliminados `getActiveThemePath`, `tryFollowActiveTheme`, `activeThemePaths`, config `sb4.colors.followTheme`, `StorageKey.ThemeImportSource`. No se lee `settings.ini`.
 - Comandos de color: `sb4.reloadColors`, `sb4.customizeColors` (1 categoría), `sb4.customizeFontStyles` (toggles), `sb4.importTheme`, `sb4.themeCreator`.
+- **F9 build vsix**: correr SIEMPRE desde el Extension Development Host (workspace), NO desde la extensión instalada — `vsce package` no incluye devDependencies (typescript/tsc-alias) y en la copia instalada `tsc` no existe. `buildVsix` ahora detecta la falta de `node_modules\.bin\tsc(.cmd)` y muestra el error claro `dt.buildNeedDevDeps` en vez del crasheo de npm.
 
 ## Theme Creator (`sb4.themeCreator`, webview)
 
-- Tabla con las **15 categorías** × (color + B/I/U/S). Color por paleta nativa + hex textual con validación; toggles; `↺` restablece la fila a sus defaults.
-- **Preview en vivo** arriba: `SAMPLE_CODE` fiel al clasificador real — los tokens están verificados contra `sa.json`/`enums.txt` (solo `commands` = miembros como `IsInAir`, `classes` = `char`, `enums` = `CivMale`; el código de opcode va `plainText`, los operadores `symbols`, `wait/if/then/switch/case/end` `keywordsFlow`).
+- Tabla con las **18 categorías** × (color + B/I/U/S). Color por paleta nativa + hex textual con validación; toggles; `↺` restablece la fila a sus defaults. Nombres legibles vía `categoryDisplayName()` (camelSplit, ej. Keywords If / Plain Text).
+- **Preview en vivo** arriba: `SAMPLE_CODE` fiel al clasificador real — los tokens están verificados contra `sa.json`/`enums.txt` (solo `commands` = miembros como `IsInAir`, `classes` = `char`, `enums` = `CivMale`; el código de opcode va `plainText`, los operadores `symbols`, `wait` `plainText`, `if/then/end` `keywordsIf`, `switch/case` `keywordsSwitch`, `while/for/until/to` `keywordsLoop`, `true` `keywordsBoolean`).
 - **Guardar** → aplica al tema activo y confirma con el nombre del archivo. **Crear tema nuevo…** → pide nombre y guarda en `<SB4>\themes\<nombre>.ini` (o Save As) dejándolo activo. Live-apply con debounce 200 ms.
 - Mensajes webview: `ready` / `state` / `apply` / `saveAs` / `status`. Manager: `getAllStyles`, `getDefaultStyle`, `applyTheme`, `saveThemeAs`, `getActiveThemeFileName`, `buildThemeContent`.
+- **Bug corregido** (webview "Loading…" eterno): en `getHtml()` el template literal se comía los backslashes del regex del `t()` inline (`\{`/`\w`/`\}` son "identity escapes" de JS → la webview recibía `/{(w+)}/g` y `{file}` nunca se interpolaba → `getElementById('activeFile')` != null → throw → sin `state` renderizado). Fix: duplicar el backslash (`/\\{(\\w+)\\}/g`). **Regla para futuros inline scripts en template literals: duplicar backslashes de cualquier regex.** `rgb-color-picker.ts` y `src/views/opcodes/script.js` están limpios; `opcodes` usa `{{localeScript}}` inyectado desde archivo (no template literal).
 
 ## Comandos registrados (extension.ts)
 
@@ -100,7 +104,11 @@ idiomas incorporados en/es + idiomas creados por el usuario vía export/import.
 ## Pendientes / notas
 
 - Copia instalada sincronizada con robocopy `/MIR` (eliminó `.vsixmanifest`, `main.txt`, `logo.jpg`, `LICENSE.txt` legacy; si VS Code notifica la extensión como corrupta/desinstalada, reinstalar con `code --install-extension` con VS Code cerrado).
-- Working copy commit: `1509a19`.
+  - Comando de sync (con `/XF .vsixmanifest` para NO borrar el manifest del VS Code instalado):
+    `robocopy "C:\Users\JM\source\repos\Prisma Launcher\Prisma Launcher\visual-builder4" "C:\Users\JM\.vscode\extensions\eos-mixel.visual-builder-4-0.0.1" /MIR /XF .vsixmanifest /R:2 /W:2 /MT:16 /NFL /NDL /NP` (exit `≤7` OK, `≥8` error).
+  - Tras el sync: **Reload Window** en el VS Code normal; si la ext. aparece corrupta, reinstalar el `.vsix`: `code --install-extension visual-builder-4-0.0.1.vsix` (VS Code cerrado).
+- Working copy commit: `1509a19` (bug theme-creator + categorías keywordsIf/Switch/Loop/Boolean corregidos DESPUÉS del commit, pendiente verificar en vivo y commitear).
+- Categorías: los temas/.ini viejos con `keywordsFlow.*` quedan sin efecto (las entradas se parsean pero no se usan); regenerar desde el Theme Creator o `sb4.customizeColors`.
 - F8 quick load: verificar contra la versión real del juego (si ya tiene mods que reemplazan `movies\` o SilentPatch con `SkipIntroSplashes=1`, el renombrado no encuentra nada y lanza igual).
 - Código: tabs, camelCase, single quotes, sin comentarios salvo que se pidan.
 - El contexto documenta el ESTADO; los cambios del momento se describen brevemente y se integran, no se acumula historial.

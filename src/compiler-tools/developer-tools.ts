@@ -30,6 +30,12 @@ export class DeveloperTools extends Singleton {
     private async buildVsix(context: vscode.ExtensionContext): Promise<void> {
         const root = context.extensionUri.fsPath;
 
+        const tscPath = path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
+        if (!await isFileExists(tscPath)) {
+            await vscode.window.showErrorMessage(this.t('dt.buildNeedDevDeps'));
+            return;
+        }
+
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: this.t('dt.progressTitle'),

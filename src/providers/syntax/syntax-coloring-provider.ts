@@ -13,7 +13,10 @@ const CATEGORY_COMMENTS = 'comments';
 const CATEGORY_LABELS = 'labels';
 const CATEGORY_VARIABLES = 'variables';
 const CATEGORY_KEYWORDS = 'keywords';
-const CATEGORY_KEYWORDS_FLOW = 'keywordsFlow';
+const CATEGORY_KEYWORDS_IF = 'keywordsIf';
+const CATEGORY_KEYWORDS_SWITCH = 'keywordsSwitch';
+const CATEGORY_KEYWORDS_LOOP = 'keywordsLoop';
+const CATEGORY_KEYWORDS_BOOLEAN = 'keywordsBoolean';
 const CATEGORY_NUMBERS = 'numbers';
 const CATEGORY_STRINGS = 'strings';
 const CATEGORY_CLASSES = 'classes';
@@ -34,11 +37,25 @@ export const KEYWORDS = new Set([
 	'to', 'true', 'unknown', 'until', 'var', 'while', 'writemem'
 ]);
 
-// Palabras de control de flujo / estructuras de alto nivel (if/then/else,
-// while/end, switch/case, wait, etc.) con color aparte del keyword normal.
-export const KEYWORDS_FLOW = new Set([
-	'if', 'then', 'else', 'elsif', 'endif', 'while', 'end', 'repeat', 'until', 'do',
-	'switch', 'case', 'default', 'break', 'continue', 'for', 'return', 'wait'
+// Estructuras condicionales / de decisión (if/then/else, switch/case).
+export const KEYWORDS_IF = new Set([
+	'if', 'then', 'else', 'elsif', 'endif', 'end'
+]);
+
+// Estructuras de decisión múltiple.
+export const KEYWORDS_SWITCH = new Set([
+	'switch', 'case', 'default'
+]);
+
+// Bucles y saltos de control (while/for/repeat/until + break/continue/return).
+export const KEYWORDS_LOOP = new Set([
+	'while', 'for', 'repeat', 'until', 'do', 'downto', 'from', 'to',
+	'break', 'continue', 'return'
+]);
+
+// Constantes booleanas.
+export const KEYWORDS_BOOLEAN = new Set([
+	'true', 'false'
 ]);
 
 // Símbolos de programación (operadores de comparación/asignación/aritméticos).
@@ -394,14 +411,31 @@ private analyze(document: vscode.TextDocument): Map<string, vscode.Range[]> {
 				// #ESPERANT, #AK47... referencias a modelos/constantes (#prefijo).
 				return CATEGORY_MODELS;
 
+			case TokenKind.Dot:
+				// Operador de acceso (char.IsInAir) — siempre texto base.
+				return CATEGORY_PLAINTEXT;
+
 			case TokenKind.Identifier: {
 				const word = token.text.toLowerCase();
 
-				if (KEYWORDS_FLOW.has(word)) {
-					// Palabras de control de flujo / estructuras de alto nivel
-					// (if, then, while, end, switch, case, wait...) con color
-					// aparte del keyword "normal".
-					return CATEGORY_KEYWORDS_FLOW;
+				if (KEYWORDS_IF.has(word)) {
+					// Condicionales y cierre de estructuras (if/then/else/end).
+					return CATEGORY_KEYWORDS_IF;
+				}
+
+				if (KEYWORDS_SWITCH.has(word)) {
+					// Estructuras de decisión múltiple (switch/case/default).
+					return CATEGORY_KEYWORDS_SWITCH;
+				}
+
+				if (KEYWORDS_LOOP.has(word)) {
+					// Bucles y saltos de control (while/for/repeat/until...).
+					return CATEGORY_KEYWORDS_LOOP;
+				}
+
+				if (KEYWORDS_BOOLEAN.has(word)) {
+					// Constantes booleanas.
+					return CATEGORY_KEYWORDS_BOOLEAN;
 				}
 
 				if (KEYWORDS.has(word)) {

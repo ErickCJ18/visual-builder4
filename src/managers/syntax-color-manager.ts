@@ -19,7 +19,10 @@ const DEFAULT_STYLES: Record<string, SyntaxColorStyle> = {
 	labels: { color: '#DBDCAC' },
 	variables: { color: '#98CFE6' },
 	keywords: { color: '#AB76A6' },
-	keywordsFlow: { color: '#E06C75' },
+	keywordsIf: { color: '#E06C75' },
+	keywordsSwitch: { color: '#D7BA7D' },
+	keywordsLoop: { color: '#C586C0' },
+	keywordsBoolean: { color: '#569CD6' },
 	numbers: { color: '#B8D7A3' },
 	strings: { color: '#BF815D' },
 	models: { color: '#B8D7A3' },
@@ -31,6 +34,10 @@ const DEFAULT_STYLES: Record<string, SyntaxColorStyle> = {
 	plainText: { color: '#B5B5B5' },
 	symbols: { color: '#CC7832' }
 };
+
+export function categoryDisplayName(category: string): string {
+	return category.replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+}
 
 const BOOLEAN_TRUE = new Set(['1', 'true', 'yes', 'on']);
 
@@ -231,7 +238,7 @@ export class SyntaxColorManager extends Singleton {
 		const categories = this.getCategories();
 
 		const items = categories.map(category => ({
-			label: category.replace(/^./, c => c.toUpperCase()),
+			label: categoryDisplayName(category),
 			description: this.getStyle(category).color,
 			category
 		}));
@@ -408,7 +415,7 @@ export class SyntaxColorManager extends Singleton {
 		const categories = this.getCategories();
 
 		const items = categories.map(category => ({
-			label: category.replace(/^./, c => c.toUpperCase()),
+			label: categoryDisplayName(category),
 			description: this.describeStyle(this.getStyle(category)),
 			category
 		}));
