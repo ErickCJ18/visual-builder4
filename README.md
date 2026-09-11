@@ -1,4 +1,7 @@
-# Sanny Builder 4 VS Code Extension
+# Visual Builder 4 - A 3D GTA Coding Extension
+### This is a fork of sb4-vscode by EOS(NoPressF)
+
+<img width="1920" height="1080" alt="logoPNG" src="https://github.com/user-attachments/assets/7fa8e4e5-7522-4d58-94c1-87fa8b196148" />
 
 ## Description
 
@@ -9,7 +12,7 @@ This Visual Studio Code extension is designed to simplify script development usi
 - **Script Compilation**: Compile your scripts using the keyboard shortcut `F6` or via the Command Palette (`Ctrl + Shift + P`) with the `Compile Script` command.
 - **Sanny Builder 4 Folder Selection**: Specify the path to the Sanny Builder 4 folder through the Command Palette (`Ctrl + Shift + P`) with the `Select SB4 Folder` command.
 
-## Installation
+### Installation
 
 To use this extension, you need to have **Sanny Builder 4** installed on your system. Follow these steps to install Sanny Builder 4:
 
