@@ -1,4 +1,7 @@
-# Sanny Builder 4 VS Code Extension
+# Visual Builder 4 - A 3D GTA Coding Extension
+-# This is a fork of sb4-vscode by EOS(NoPressF)
+
+<img width="1920" height="1080" alt="logoPNG" src="https://github.com/user-attachments/assets/7fa8e4e5-7522-4d58-94c1-87fa8b196148" />
 
 ## Description
 
