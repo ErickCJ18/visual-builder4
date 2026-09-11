@@ -11,6 +11,7 @@ export enum StorageKey {
     GtaVersion = 'gtaVersion',
     Sb4FolderPath = 'sb4FolderPath',
     CompileExtPref = 'compileExtPref',
+    GameFolderPath = 'gameFolderPath',
 };
 
 export interface CommandArgs {

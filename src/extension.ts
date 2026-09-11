@@ -1,4 +1,4 @@
-import { CommandManager, FolderManager, GtaVersionManager, LanguageManager, StorageDataManager, SyntaxColorManager } from '@managers';
+import { CommandManager, FolderManager, GameFolderManager, GtaVersionManager, LanguageManager, StorageDataManager, SyntaxColorManager } from '@managers';
 import { BaseProvider, ClassProvider, CoordsProvider, CommandFormatterProvider, DefinitionSearch, EnumProvider, JumpIncludeProvider, LoopWaitDiagnostics, ModelProvider, OpcodeProvider, OpcodesSearch, ReferenceSearch, SyntaxColoringProvider } from '@providers';
 import { LocaleManager } from '@i18n';
 import * as vscode from 'vscode';
@@ -16,6 +16,7 @@ export async function activate(context: vscode.ExtensionContext) {
     await CommandManager.getInstance().init();
     CommandFormatterProvider.getInstance().init();
     FolderManager.getInstance().init(context);
+    GameFolderManager.getInstance().init(context);
     GtaVersionButton.getInstance().init(context);
     LanguageManager.getInstance().init(context);
     VirtualDocumentProvider.getInstance().init(context);

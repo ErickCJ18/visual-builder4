@@ -47,7 +47,7 @@ const SAMPLE_CODE: Array<Array<{ t: string; c: string }>> = [
 	[{ t: 'repeat', c: 'keywordsLoop' }, { t: ' ', c: 'plainText' }, { t: 'until', c: 'keywordsLoop' }],
 	[{ t: 'for', c: 'keywordsLoop' }, { t: ' 0@', c: 'variables' }, { t: ' to', c: 'keywordsLoop' }, { t: ' 10', c: 'numbers' }],
 	[{ t: '0005:', c: 'plainText' }, { t: ' $COUNTER', c: 'variables' }, { t: ' +=', c: 'symbols' }, { t: ' 1', c: 'numbers' }],
-	[{ t: '0861:', c: 'plainText' }, { t: ' 0@', c: 'variables' }, { t: ' += offset', c: 'symbols' }, { t: ' 1', c: 'numbers' }, { t: ' 2', c: 'numbers' }, { t: ' 3', c: 'numbers' }, { t: ' ', c: 'plainText' }, { t: '90.5', c: 'numbers' }],
+	[{ t: '0861:', c: 'plainText' }, { t: ' 0@', c: 'variables' }, { t: ' +=', c: 'symbols' }, { t: ' offset', c: 'plainText' }, { t: ' 1', c: 'numbers' }, { t: ' 2', c: 'numbers' }, { t: ' 3', c: 'numbers' }, { t: ' ', c: 'plainText' }, { t: '90.5', c: 'numbers' }],
 	[{ t: 'load_scene ', c: 'plainText' }, { t: '"las2.img"', c: 'strings' }],
 	[{ t: 'create_char ', c: 'plainText' }, { t: 'CivMale', c: 'enums' }, { t: ' #BMX', c: 'models' }],
 	[{ t: '0407:', c: 'plainText' }, { t: ' char', c: 'classes' }, { t: '.', c: 'plainText' }, { t: 'IsInAir', c: 'commands' }, { t: ' $PLAYER_ACTOR', c: 'variables' }],

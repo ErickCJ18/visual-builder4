@@ -7,6 +7,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { FolderManager, GtaVersionManager, StorageDataManager } from '@managers';
 import { LocaleManager } from '@i18n';
+import { SyntaxColoringProvider } from '@providers';
 import { CompilerTools } from './compiler-tools';
 import { SB4_VIRTUAL_SCHEME, VirtualDocumentProvider } from '@components';
 
@@ -100,7 +101,7 @@ private async getCompileTarget(): Promise<{ input: string; output: string } | un
 				path.dirname(input),
 				`${baseName}.${defaultExt}`
 			)),
-			filters: { [this.t('cb.filterCompiled')]: ['cs', 'csm', 'scm'] }
+			filters: { [this.t('cb.filterCompiled')]: ['scm', 'cs', 'cs3', 'cs4', 's', 'cm', 'csa', 'csi'] }
 		});
 
 		if (!uri) {
@@ -140,6 +141,10 @@ private async getCompileTarget(): Promise<{ input: string; output: string } | un
 
     private temporarySourcePath?: string;
     private temporarySourceContent?: string;
+    // La tab sin nombre ya se sustituyó por la pestaña virtual ANTES de
+    // compilar (swap temprano tras el diálogo de guardado): el cierre del
+    // resultado no debe volver a tocar el tab anterior.
+    private temporarySourceSwapped = false;
 
     private getRememberedCompileExt(dir: string, name: string): string | undefined {
         return this.storageDataManager.get<Record<string, string>>(StorageKey.CompileExtPref)?.[this.compilePrefKey(dir, name)];
@@ -159,6 +164,8 @@ private async getCompileTarget(): Promise<{ input: string; output: string } | un
     }
 
     private async execute() {
+        this.temporarySourceSwapped = false;
+
         if (!this.storageDataManager.has(StorageKey.Sb4FolderPath)) {
             return;
         }
@@ -187,7 +194,7 @@ private async getCompileTarget(): Promise<{ input: string; output: string } | un
                 const outputUri = await vscode.window.showSaveDialog({
                     title: this.t('cb.saveTitle'),
                     defaultUri: vscode.Uri.file(path.join(this.getWorkspaceFolder(), 'main.scm')),
-                    filters: { [this.t('cb.filterCompiled')]: ['cs', 'csm', 'scm'] }
+                    filters: { [this.t('cb.filterCompiled')]: ['scm', 'cs', 'cs3', 'cs4', 's', 'cm', 'csa', 'csi'] }
                 });
 
                 if (!outputUri) {
@@ -200,6 +207,13 @@ this.temporarySourcePath = tempSource;
 				outputPath = outputUri.fsPath;
 				swapActiveTab = true;
 				await this.rememberCompileExt(path.dirname(outputPath), path.basename(outputPath, path.extname(outputPath)), path.extname(outputPath).replace(/^\./, ''));
+
+				// Swap TEMPRANO: en este punto la tab sin nombre es la que
+				// acaba de quedar activa tras el diálogo, así que limpiarla
+				// con undo es fiable y el cierre no pregunta por guardar.
+				// Además el usuario ve "main.scm" desde el inicio (mientras
+				// compila) en vez de esperar al resultado.
+				await this.swapUntitledToVirtualTab(editor, outputUri.fsPath);
             } else {
                 // Compilar el contenido en disco: guardar antes si la pestaña
                 // está sucia, para que sanny compile lo que se ve.
@@ -300,19 +314,49 @@ if (logPath !== null) {
 				const executeOptions = this.executeOptions[this.executeType];
 				const elapsed = ` ${this.formatElapsed(Date.now() - started)}`;
 
+				// sanny sale ANTES de terminar de escribir: el .txt puede
+				// tardar ~1s en aparecer tras el cierre del proceso.
+				const baseName = path.basename(filePath, path.extname(filePath));
+				await this.waitForWrite([path.join(path.dirname(filePath), `${baseName}.txt`)]);
+
 				this.diagnosticCollection?.clear();
 				vscode.window.showInformationMessage(`✅ ${this.t(executeOptions.successMessage)}${elapsed}`);
 				await this.showSuccessOutput(filePath, outputPath, swapActiveTab);
 			} else {
-				await fsp.access(logPath);
+				// COMPILE: sanny sale del proceso en ~30ms pero recién escribe
+				// los archivos a los ~900ms, y NO siempre genera compile.log en
+				// éxito (a veces solo existe el .cs/.scm). Evaluar por
+				// EVIDENCIA, no por la presencia del log.
+				const executeOptions = this.executeOptions[this.executeType];
+				const elapsed = ` ${this.formatElapsed(Date.now() - started)}`;
+				const target = outputPath ? ` → ${path.basename(outputPath)}` : '';
 
-				const content = await this.readLogFile(logPath);
+				const arrived = await this.waitForWrite([logPath, ...(outputPath ? [outputPath] : [])], 10000);
 
-				await this.handleLogContent(content, filePath, outputPath, Date.now() - started, swapActiveTab);
+				if (arrived.includes(logPath)) {
+					const content = await this.readLogFile(logPath).catch(() => '');
+					if (content.trim() !== '') {
+						this.diagnosticCollection?.set(vscode.Uri.file(filePath),
+							this.compilerTools.createFileLevelDiagnostics(content));
+						vscode.window.showErrorMessage(`${this.t(executeOptions.errorMessagePrefix)}${elapsed}:\n${content}`);
+						return;
+					}
+				}
+
+				if (outputPath && !arrived.includes(outputPath)) {
+					vscode.window.showErrorMessage(`${this.t(executeOptions.errorMessagePrefix)}${elapsed}: ${this.t('cb.noOutput')}`);
+					return;
+				}
+
+				this.diagnosticCollection?.clear();
+				vscode.window.showInformationMessage(`✅ ${this.t(executeOptions.successMessage)}${elapsed}${target}`);
+				await this.showSuccessOutput(filePath, outputPath, swapActiveTab);
 			}
 
 		} catch (error) {
-			this.handleError(error as any, filePath, outputPath, reject, Date.now() - started, swapActiveTab);
+			const message = error instanceof Error ? error.message : String(error);
+			vscode.window.showErrorMessage(this.t('cb.readLogFailed', { message }));
+			this.log(`handleProcessClose error: ${message}`);
 		}
 
 		resolve();
@@ -324,23 +368,34 @@ if (logPath !== null) {
 
 	}
 
+	/**
+	 * Espera (polling) hasta que exista uno de los paths dados o venza el
+	 * timeout. Sanny Builder sale del proceso antes de escribir sus archivos
+	 * (~1s de demora), así que `close` no es señal de fin de escritura.
+	 * Devuelve las rutas que llegaron a existir.
+	 */
+	private async waitForWrite(paths: string[], timeoutMs = 5000): Promise<string[]> {
+		const matched = new Set<string>();
+		const deadline = Date.now() + timeoutMs;
+
+		while (Date.now() < deadline) {
+			for (const filePath of paths) {
+				if (!matched.has(filePath) && await isFileExists(filePath)) {
+					matched.add(filePath);
+				}
+			}
+			if (matched.size === paths.length) {
+				break;
+			}
+			await new Promise(resolve => setTimeout(resolve, 40));
+		}
+
+		return [...matched];
+	}
+
 	private async readLogFile(logPath: string): Promise<string> {
 		const buffer = await fsp.readFile(logPath);
 		return iconv.decode(buffer, 'win1251');
-	}
-
-	private async handleLogContent(content: string, filePath: string, outputPath?: string, elapsedMs?: number, swapActiveTab = false) {
-		const executeOptions = this.executeOptions[this.executeType];
-		const elapsed = elapsedMs !== undefined ? ` ${this.formatElapsed(elapsedMs)}` : '';
-		const target = this.executeType === ExecuteType.COMPILE && outputPath ? ` → ${path.basename(outputPath)}` : '';
-		if (content === null || content.trim() === '') {
-			vscode.window.showInformationMessage(`✅ ${this.t(executeOptions.successMessage)}${elapsed}${target}`);
-			await this.showSuccessOutput(filePath, outputPath, swapActiveTab);
-		} else {
-			this.diagnosticCollection?.set(vscode.Uri.file(filePath),
-				this.compilerTools.createFileLevelDiagnostics(content));
-			vscode.window.showErrorMessage(`${this.t(executeOptions.errorMessagePrefix)}${elapsed}:\n${content}`);
-		}
 	}
 
 	/**
@@ -417,17 +472,41 @@ if (logPath !== null) {
 			return;
 		}
 
-		// El compilado (.scm/.cs) es binario: VS Code no lo abre como texto.
-		// En el flujo de tab SIN NOMBRE se abre una pestaña VIRTUAL titulada
-		// como el destino (main.scm) con el código que había antes en la tab;
-		// el binario en disco queda intacto.
-		if (await isBinaryFile(outputPath)) {
-			this.log(`output is binary (${path.basename(outputPath)}), skipping text open`);
+		// El swap temprano (tab sin nombre) ya sustituyó la pestaña durante el
+		// diálogo de guardado; al terminar la compilación no se vuelve a tocar.
+		if (this.temporarySourceSwapped) {
+			this.log('swap temprano ya hecho: no se vuelve a tocar pestañas');
+			return;
+		}
 
-			if (swapActiveTab && this.temporarySourceContent !== undefined) {
+		// El compilado (.scm/.cs) es binario: VS Code no lo abre como texto.
+		// En lugar de eso se abre una pestaña VIRTUAL titulada como el destino
+		// (main.scm) con el código que se estaba compilando (tab sin nombre:
+		// el contenido temporal; fuente físico: el contenido en disco); el
+		// binario real queda intacto.
+		if (await isBinaryFile(outputPath)) {
+			this.log(`output is binary (${path.basename(outputPath)}), using virtual tab`);
+
+			let virtualContent = this.temporarySourceContent;
+			if (virtualContent === undefined && sourcePath) {
+				virtualContent = await fsp.readFile(sourcePath, 'utf-8').catch(() => undefined);
+			}
+
+			if (virtualContent !== undefined) {
 				const virtualUri = vscode.Uri.from({ scheme: SB4_VIRTUAL_SCHEME, path: `/${path.basename(outputPath)}` });
-				this.virtualDocProvider.setContent(virtualUri, this.temporarySourceContent);
+				this.virtualDocProvider.setContent(virtualUri, virtualContent);
 				this.log(`opening virtual tab ${virtualUri.toString()}`);
+
+				// Cerrar PRIMERO la pestaña del fuente/sin nombre SIN diálogo:
+				// una tab untitled está sucia y cerrarla preguntaría por guardar
+				// y volvería el foco a ella. Como aquí AÚN es la pestaña activa,
+				// se deshacen sus cambios hasta dejarla limpia (el contenido
+				// real ya quedó en la pestaña virtual) y se cierra en silencio;
+				// luego se abre main.scm: queda UNA sola pestaña, sin saltos.
+				const sourceTabs = this.findSourceOrUntitledTabs(sourceUri, outputUri, editor, swapActiveTab);
+				for (const tab of sourceTabs) {
+					await this.closeTabSilently(tab);
+				}
 
 				try {
 					const document = await vscode.workspace.openTextDocument(virtualUri);
@@ -435,11 +514,12 @@ if (logPath !== null) {
 						preview: false,
 						viewColumn: editor?.viewColumn ?? vscode.ViewColumn.Active
 					});
-					void vscode.languages.setTextDocumentLanguage(document, 'sannybuilder').then(undefined, () => { });
-
-					for (const tab of this.findSourceOrUntitledTabs(sourceUri, outputUri, editor, swapActiveTab)) {
-						await vscode.window.tabGroups.close(tab, true);
+					void vscode.languages.setTextDocumentLanguage(document, 'sannybuilder').then(() => {
+					const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+					if (editor) {
+						SyntaxColoringProvider.getInstance().applyToEditor(editor);
 					}
+				}, () => { });
 				} catch (err) {
 					const message = err instanceof Error ? err.message : String(err);
 					vscode.window.showWarningMessage(this.t('cb.openCompiledTabFailed', { message }));
@@ -483,6 +563,159 @@ if (logPath !== null) {
 			this.outputChannel = vscode.window.createOutputChannel('VB4 Compile');
 		}
 		this.outputChannel.appendLine(`[${new Date().toISOString()}] ${message}`);
+	}
+
+	/**
+	 * Swap temprano de la tab sin nombre hacia la pestaña virtual del
+	 * compilado. Se ejecuta justo después de que el usuario elige el destino
+	 * en el diálogo de guardado: ahí la tab sin nombre es 100% la activa, así
+	 * que `closeTabSilently` la limpia (vacía el buffer) con total fiabilidad
+	 * y luego se abre main.scm de inmediato (el usuario ve su código mientras
+	 * sanny compila en paralelo).
+	 */
+	private async swapUntitledToVirtualTab(editor: vscode.TextEditor, outputPath: string) {
+		const virtualUri = vscode.Uri.from({ scheme: SB4_VIRTUAL_SCHEME, path: `/${path.basename(outputPath)}` });
+
+		const tab = vscode.window.tabGroups.all
+			.flatMap(group => group.tabs)
+			.find(t => t.input instanceof vscode.TabInputText && t.input.uri.toString() === editor.document.uri.toString());
+
+		this.virtualDocProvider.setContent(virtualUri, editor.document.getText());
+		this.log(`early swap: closing source tab, opening virtual ${virtualUri.toString()}`);
+
+		// Se limpia/cierra la previa MIENTRAS la tab sigue activa: el vaciado
+		// del buffer solo voltea `tab.isDirty` en el workbench con la tab en
+		// foco. El cierre es fuego-y-olvido (la disposición del untitled cuesta
+		// ~2.5s) y la virtual se abre al instante después.
+		if (tab) {
+			await this.closeTabSilently(tab, true, true);
+		}
+
+		try {
+			const document = await vscode.workspace.openTextDocument(virtualUri);
+			await vscode.window.showTextDocument(document, {
+				preview: false,
+				viewColumn: editor.viewColumn ?? vscode.ViewColumn.Active
+			});
+			void vscode.languages.setTextDocumentLanguage(document, 'sannybuilder').then(() => {
+					const editor = vscode.window.visibleTextEditors.find(e => e.document === document);
+					if (editor) {
+						SyntaxColoringProvider.getInstance().applyToEditor(editor);
+					}
+				}, () => { });
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			vscode.window.showWarningMessage(this.t('cb.openCompiledTabFailed', { message }));
+			this.log(`open virtual tab ERROR: ${message}`);
+		}
+
+		this.temporarySourceSwapped = true;
+	}
+
+	/**
+	 * Cierra una tab SIN el diálogo de guardado:
+	 * - `file` (fuente físico) ya viene limpio de `execute()` → cierre directo.
+	 * - `untitled` / virtual sucia: 1) se VACÍA el buffer con un edit (el
+	 *   modelo untitled marca limpio cuando queda en UNA línea de 0 chars →
+	 *   `tabGroups.close` no pregunta); 2) si aún quedara sucia, undo hasta
+	 *   vaciar (fallback histórico). Se audita contra `tab.isDirty` (estado
+	 *   real del workbench, que puede diferir del `doc.isDirty` de la API).
+	 * GARANTÍA: si la tab sigue sucia tras limpiar, NO se cierra (evita el
+	 * diálogo), se conserva la pestaña y se avisa. El contenido ya está a
+	 * salvo en la pestaña virtual / archivo temporal. Con `forceFocus` la tab
+	 * se enfoca explícitamente antes de limpiar (útil para el swap temprano).
+	 * Con `fireClose` el cierre se dispara SIN esperarlo (la disposición del
+	 * editor untitled cuesta ~2.5s en el workbench; se abre la virtual en
+	 * paralelo mientras la previa se cierra sola en background).
+	 */
+	private async closeTabSilently(tab: vscode.Tab, forceFocus = false, fireClose = false): Promise<void> {
+		const input = tab.input;
+
+		let uri: vscode.Uri | undefined;
+		if (input instanceof vscode.TabInputText) {
+			uri = input.uri;
+		}
+
+		if (uri && uri.scheme !== 'file') {
+			try {
+				const activeDoc = vscode.window.activeTextEditor?.document;
+				const doc = (activeDoc && activeDoc.uri.toString() === uri.toString())
+					? activeDoc
+					: await vscode.workspace.openTextDocument(uri);
+
+				let active = vscode.window.activeTextEditor?.document.uri.toString() === uri.toString();
+				// El flip de `tab.isDirty` exige foco: si la tab objetivo está
+				// sucia pero no es la activa y pedimos forceFocus, la enfocamos.
+				if ((tab.isDirty || doc.isDirty) && !active && forceFocus) {
+					await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
+					active = true;
+				}
+				this.log(`closeTabSilently: scheme=${uri.scheme} docDirty=${doc.isDirty} tabDirty=${tab.isDirty} active=${active}`);
+
+				if (doc.isDirty || tab.isDirty) {
+					// VACIAR el buffer con un edit sobre la doc (funciona aunque
+					// la tab NO sea la activa): en la práctica (tab atada a un
+					// input stale restaurado) este edit es el que pone
+					// `tab.isDirty` en false en el workbench → cierre sin diálogo.
+					const editor = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === uri.toString());
+					if (tab.isDirty && editor) {
+						const range = new vscode.Range(
+							doc.positionAt(0),
+							doc.positionAt(doc.getText().length)
+						);
+						await editor.edit(edit => edit.delete(range));
+					}
+					if (tab.isDirty) {
+						this.log(`closeTabSilently: after clear, docDirty=${doc.isDirty} tabDirty=${tab.isDirty}`);
+
+						// Fallback undo SOLO si la tab sigue sucia Y es la activa
+						// (el comando undo opera sobre el editor enfocado; si la
+						// virtual ya tomó el foco, no aplica). El docDirty de la
+						// API es irrelevante para el diálogo (evidencia: quedó
+						// true y el cierre fue igualmente silencioso). Tope corto.
+						let guard = 0;
+						while (tab.isDirty && vscode.window.activeTextEditor?.document.uri.toString() === uri.toString() && guard < 30) {
+							await vscode.commands.executeCommand('undo');
+							await new Promise(resolve => setTimeout(resolve, 5));
+							guard++;
+						}
+						if (guard > 0 || tab.isDirty) {
+							this.log(`closeTabSilently: undo fallback guard=${guard} tabDirty=${tab.isDirty}`);
+						}
+					}
+				}
+
+				// NUNCA cerrar con el diálogo de guardado: si el workbench aún la
+				// ve sucia, se conserva la tab (el código ya está a salvo en la
+				// pestaña virtual / archivo temporal) y se avisa al usuario.
+				if (tab.isDirty) {
+					this.log(`closeTabSilently: TAB SIGUE SUCIA (tabDirty=true), se conserva la pestaña`);
+					vscode.window.showWarningMessage(this.t('cb.keepTabInsteadOfPrompt'));
+					return;
+				}
+			} catch (err) {
+				this.log(`closeTabSilently cleanup error: ${err instanceof Error ? err.message : String(err)}`);
+			}
+		}
+
+		try {
+			const closeTask = vscode.window.tabGroups.close(tab, true);
+			if (fireClose) {
+				// El cierre del editor untitled cuesta ~2.5s en el workbench
+				// (disposición del modelo, hot-exit). No lo esperamos: la
+				// virtual se abre YA y en paralelo la previa cierra sola.
+				this.log('closeTabSilently: tab close initiated (fuego y olvido)');
+				void closeTask.then(
+					ok => this.log(`closeTabSilently: background close done, ok=${ok}`),
+					err => this.log(`closeTabSilently close error (fuego y olvido): ${err instanceof Error ? err.message : String(err)}`)
+				);
+			} else {
+				await closeTask;
+				this.log('closeTabSilently: tab closed via tabGroups.close');
+			}
+		} catch (err) {
+			this.log(`closeTabSilently close error: ${err instanceof Error ? err.message : String(err)}`);
+		}
 	}
 
 	private findOldOutputTabs(outputUri: vscode.Uri): vscode.Tab[] {
@@ -533,23 +766,8 @@ if (logPath !== null) {
 		return tabs;
 	}
 
-    private handleProcessError(err: Error, reject: (reason?: any) => void) {
+private handleProcessError(err: Error, reject: (reason?: any) => void) {
         vscode.window.showErrorMessage(this.t('cb.processError', { message: err.message }));
         reject(err);
-    }
-
-private handleError(error: NodeJS.ErrnoException, filePath: string, outputPath: string | undefined, reject: (reason?: any) => void, elapsedMs?: number, swapActiveTab = false) {
-if (error.code === 'ENOENT') {
-			const executeOptions = this.executeOptions[this.executeType];
-			const elapsed = elapsedMs !== undefined ? ` ${this.formatElapsed(elapsedMs)}` : '';
-			const target = this.executeType === ExecuteType.COMPILE && outputPath ? ` → ${path.basename(outputPath)}` : '';
-
-			this.diagnosticCollection?.clear();
-			vscode.window.showInformationMessage(`✅ ${this.t(executeOptions.successMessage)}${elapsed}${target}`);
-			void this.showSuccessOutput(filePath, outputPath, swapActiveTab);
-		} else {
-            vscode.window.showErrorMessage(this.t('cb.readLogFailed', { message: error.message }));
-            reject(error);
-        }
     }
 }

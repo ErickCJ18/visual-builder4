@@ -12,6 +12,7 @@
     "command.insertCoordinates": "VB4: Insertar coordenadas del jugador",
     "command.insertAngle": "VB4: Insertar ángulo del jugador",
     "command.openGame": "VB4: Abrir el juego (F8)",
+    "command.selectGameFolder": "VB4: Seleccionar carpeta del juego",
     "command.buildVsix": "VB4: Compilar extensión (VSIX)",
     "command.selectLanguage": "VB4: Seleccionar idioma",
     "command.exportTexts": "VB4: Exportar textos de la UI",

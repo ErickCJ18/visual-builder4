@@ -1,5 +1,6 @@
 export * from './command-manager';
 export * from './folder-manager';
+export * from './game-folder-manager';
 export * from './gta-version-manager';
 export * from './html-format-color-manager';
 export * from './language-manager';

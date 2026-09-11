@@ -90,9 +90,11 @@ export class Tokenizer extends Singleton {
 
 	/**
 	 * Consume un número entero o decimal (p.ej. "90.5") y lo emite como token.
+	 * `start` permite emitir un NEGATIVO: el llamador pasa col apuntando al
+	 * dígito/dot tras el '-' y el slice arranca en col-1 para incluir el signo.
+	 * El loop consume desde `col` (tras el signo) para no tropezarse con el '-'.
 	 */
-	private pushNumberOrFloat(line: string, lineNum: number, col: number): number {
-		const start = col;
+	private pushNumberOrFloat(line: string, lineNum: number, col: number, start: number = col): number {
 		let hasDot = false;
 
 		while (col < line.length) {
@@ -143,19 +145,16 @@ export class Tokenizer extends Singleton {
 					continue;
 				}
 
-				for (const [str, kind] of Object.entries(multiCharTokens)) {
-					let matches = 0;
-
-					for (const c of str) {
-						if (c === line[col]) {
-							matches++;
-							col++;
-						}
-					}
-
-					if (matches === str.length) {
-						this.push(kind, str, lineNum + 1, col);
-					}
+				// Operadores de dos caracteres (==, +=, -=). Se busca el par EXACTO
+				// línea[col..col+1]: antes, el bucle por caracteres avanzaba `col`
+				// aunque el match fuera parcial (p.ej. en "-1655" consumía el '-' de
+				// "-=" sin emitir nada → el signo y el 1 siguiente quedaban sin token).
+				const twoChar = line[col] + (line[col + 1] ?? '');
+				const multiCharKind = multiCharTokens[twoChar];
+				if (multiCharKind !== undefined) {
+					this.push(multiCharKind, twoChar, lineNum + 1, col);
+					col += 2;
+					continue;
 				}
 
 				const prefixCharKind = prefixCharTokens[char];
@@ -168,6 +167,15 @@ export class Tokenizer extends Singleton {
 				// plano (entero/float) si no lo hay.
 				if (isDigitChar(char)) {
 					col = this.tryPushPostfix(line, lineNum, col) ?? this.pushNumberOrFloat(line, lineNum, col);
+					continue;
+				}
+
+				// Número NEGATIVO: "-1655.8" o "-.5" (el '-' pegado a un dígito
+				// o a un '.'+dígito). El token incluye el signo para colorearlo.
+				if (char === '-' &&
+					(isDigitChar(line[col + 1] ?? '') ||
+						(line[col + 1] === '.' && isDigitChar(line[col + 2] ?? '')))) {
+					col = this.pushNumberOrFloat(line, lineNum, col + 1, col);
 					continue;
 				}
 

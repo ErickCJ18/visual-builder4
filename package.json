@@ -26,7 +26,8 @@
         "Formatters"
     ],
     "activationEvents": [
-        "onStartupFinished"
+        "onStartupFinished",
+        "onFileSystem:sb4-tab"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -82,6 +83,10 @@
             {
                 "command": "sb4.openGame",
                 "title": "%command.openGame%"
+            },
+            {
+                "command": "sb4.selectGameFolder",
+                "title": "%command.selectGameFolder%"
             },
             {
                 "command": "sb4.buildVsix",
@@ -220,8 +225,14 @@
                 ],
                 "extensions": [
                     ".sb",
-                    ".csm",
-                    ".scm"
+                    ".scm",
+                    ".cs",
+                    ".cs3",
+                    ".cs4",
+                    ".s",
+                    ".cm",
+                    ".csa",
+                    ".csi"
                 ],
                 "configuration": "./language-configuration.json",
                 "icon": {
@@ -237,8 +248,14 @@
                 "path": "./syntax/sb4.tm-language.json",
                 "extensions": [
                     ".sb",
-                    ".csm",
-                    ".scm"
+                    ".scm",
+                    ".cs",
+                    ".cs3",
+                    ".cs4",
+                    ".s",
+                    ".cm",
+                    ".csa",
+                    ".csi"
                 ]
             }
         ],

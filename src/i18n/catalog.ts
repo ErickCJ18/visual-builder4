@@ -142,15 +142,18 @@ const en: Record<string, string> = {
 	'dt.compiledNoVsix': '✅ Extension compiled: no .vsix in the root.',
 	'dt.buildError': '❌ Error building the extension (code {code}):\n{details}',
 	'dt.buildNeedDevDeps': 'The build needs the dev dependencies (typescript/tsc-alias), which are only shipped in the development copy. Run F9 from the Extension Development Host (workspace), not from the installed extension.',
-	'dt.noFolder': '⚠️ VB4: no SB4 folder configured. Use "VB4: Select SB4 Folder".',
-	'dt.noGamePath': '⚠️ VB4: GamePath not found in <SB4>\\data\\settings.ini.',
-	'dt.noExe': '⚠️ VB4: {path} not found.',
 	'dt.launching': '🚀 Launching {exe}.exe',
 	'dt.splashRenameFailed': '⚠️ VB4: quick load could not hide the intro videos: {reason}',
 
+	// --- Carpeta del juego (F8) ---
+	'gf.notConfigured': '⚠️ VB4: no game folder configured. Use "VB4: Select Game Folder".',
+	'gf.selectLabelAction': 'Select Game Folder',
+	'gf.selectedOk': '✅ Game folder selected ({exe} found).',
+	'gf.exeMissing': '{exe} was not found in this folder.',
+
 	// --- Compilar / Descompilar ---
 	'cb.openScript': 'Open a script to compile (F6).',
-	'cb.saveTitle': 'Choose where to save the compiled script (.cs / .csm / .scm)',
+	'cb.saveTitle': 'Choose where to save the compiled script (.scm / .cs / .cs3 / .cs4 / .s / .cm / .csa / .csi)',
 	'cb.filterCompiled': 'Compiled script',
 	'cb.filterDecompiled': 'Compiled scripts',
 	'cb.operationCompile': 'Compiling',
@@ -166,6 +169,8 @@ const en: Record<string, string> = {
 	'cb.openCompiledFileFailed': 'Could not open the compiled file: {message}',
 	'cb.processError': 'Process error: {message}',
 	'cb.readLogFailed': 'Failed to read log file: {message}',
+	'cb.noOutput': 'Sanny Builder did not produce an output file. Check the SB4 folder and try again.',
+	'cb.keepTabInsteadOfPrompt': 'The source is safe in the compiled tab. Close the previous tab manually without saving.',
 	'cb.outputChannel': 'VB4 Compile',
 
 	// --- Coordenadas ---
@@ -177,7 +182,7 @@ const en: Record<string, string> = {
 	'coords.runFailed': 'Failed to run the coordinates script: {message}',
 
 	// --- Webview de búsqueda de opcodes ---
-	'ow.panelTitle': 'SB4: Search Opcodes',
+	'ow.panelTitle': 'Opcode Searcher',
 	'ow.title': 'Opcodes List',
 	'ow.chooseType': 'Choose a search type:',
 	'ow.typeOpcodes': 'Opcodes',
@@ -320,15 +325,18 @@ const es: Record<string, string> = {
 	'dt.compiledNoVsix': '✅ Extensión compilada: no hay ningún .vsix en la raíz.',
 	'dt.buildError': '❌ Error al construir la extensión (código {code}):\n{details}',
 	'dt.buildNeedDevDeps': 'El build necesita las dev dependencies (typescript/tsc-alias), que solo vienen en la copia de desarrollo. Ejecutá F9 desde el Extension Development Host (workspace), no desde la extensión instalada.',
-	'dt.noFolder': '⚠️ VB4: no hay una carpeta de SB4 configurada. Usá "VB4: Select SB4 Folder".',
-	'dt.noGamePath': '⚠️ VB4: no se encontró GamePath en <SB4>\\data\\settings.ini.',
-	'dt.noExe': '⚠️ VB4: no se encontró {path}.',
 	'dt.launching': '🚀 Lanzando {exe}.exe',
 	'dt.splashRenameFailed': '⚠️ VB4: la carga rápida no pudo ocultar los vídeos de intro: {reason}',
 
+	// --- Carpeta del juego (F8) ---
+	'gf.notConfigured': '⚠️ VB4: no hay una carpeta de juego configurada. Usá "VB4: Select Game Folder".',
+	'gf.selectLabelAction': 'Seleccionar carpeta del juego',
+	'gf.selectedOk': '✅ Carpeta del juego seleccionada (se encontró {exe}).',
+	'gf.exeMissing': 'No se encontró {exe} en esta carpeta.',
+
 	// --- Compilar / Descompilar ---
 	'cb.openScript': 'Abrí un script para compilar (F6).',
-	'cb.saveTitle': 'Elegí dónde guardar el script compilado (.cs / .csm / .scm)',
+	'cb.saveTitle': 'Elegí dónde guardar el script compilado (.scm / .cs / .cs3 / .cs4 / .s / .cm / .csa / .csi)',
 	'cb.filterCompiled': 'Script compilado',
 	'cb.filterDecompiled': 'Scripts compilados',
 	'cb.operationCompile': 'Compilando',
@@ -344,6 +352,8 @@ const es: Record<string, string> = {
 	'cb.openCompiledFileFailed': 'No se pudo abrir el archivo compilado: {message}',
 	'cb.processError': 'Error del proceso: {message}',
 	'cb.readLogFailed': 'No se pudo leer el archivo de log: {message}',
+	'cb.noOutput': 'Sanny Builder no generó el archivo de salida. Verificá la carpeta de SB4 e intenta de nuevo.',
+	'cb.keepTabInsteadOfPrompt': 'El código está a salvo en la pestaña del compilado. Cerrá la pestaña previa manualmente sin guardar.',
 	'cb.outputChannel': 'VB4 Compile',
 
 	// --- Coordenadas ---
@@ -355,7 +365,7 @@ const es: Record<string, string> = {
 	'coords.runFailed': 'No se pudo ejecutar el script de coordenadas: {message}',
 
 	// --- Webview de búsqueda de opcodes ---
-	'ow.panelTitle': 'SB4: Buscar opcodes',
+	'ow.panelTitle': 'Buscador de opcodes',
 	'ow.title': 'Lista de opcodes',
 	'ow.chooseType': 'Elegí un tipo de búsqueda:',
 	'ow.typeOpcodes': 'Opcodes',
