@@ -99,8 +99,8 @@ idiomas incorporados en/es + idiomas creados por el usuario vía export/import.
 
 ## Pendientes / notas
 
-- Sincronizar la copia instalada (robocopy) tras cada sesión de cambios.
-- Working copy sin commitear vs HEAD `cd455e0`.
+- Copia instalada sincronizada con robocopy `/MIR` (eliminó `.vsixmanifest`, `main.txt`, `logo.jpg`, `LICENSE.txt` legacy; si VS Code notifica la extensión como corrupta/desinstalada, reinstalar con `code --install-extension` con VS Code cerrado).
+- Working copy commit: `1509a19`.
 - F8 quick load: verificar contra la versión real del juego (si ya tiene mods que reemplazan `movies\` o SilentPatch con `SkipIntroSplashes=1`, el renombrado no encuentra nada y lanza igual).
 - Código: tabs, camelCase, single quotes, sin comentarios salvo que se pidan.
 - El contexto documenta el ESTADO; los cambios del momento se describen brevemente y se integran, no se acumula historial.
