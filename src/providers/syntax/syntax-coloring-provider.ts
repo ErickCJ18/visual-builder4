@@ -230,8 +230,24 @@ export class SyntaxColoringProvider extends Singleton {
 		}
 
 		const key = event.document.uri.toString();
-		this.clearTimer(key);
+		const paint = this.paints.get(key);
 
+		// Cambios ESTRUCTURALES (insertar/borrar líneas, pegar un bloque con
+		// saltos de línea): las decoration del texto previo quedan ancladas a
+		// sus offsets viejos y, mientras corre el debounce, se estiran sobre
+		// el texto NUEVO con colores incorrectos (ej. el pegado que parece
+		// "todo rojo" y luego se corrige). Repintar DE INMEDIATO elimina esa
+		// ventana; la rapidez se mantiene porque el análisis completo ya es el
+		// que tocaría hacer igualmente 16 ms después.
+		if (paint &&
+			(event.document.lineCount !== paint.lines.length ||
+				event.contentChanges.some(ch => ch.range.start.line !== ch.range.end.line || /[\r\n]/.test(ch.text)))) {
+			this.clearTimer(key);
+			this.repaintChangedDocument(event);
+			return;
+		}
+
+		this.clearTimer(key);
 		this.debounceTimers.set(key, setTimeout(() => {
 			this.debounceTimers.delete(key);
 			this.repaintChangedDocument(event);
@@ -456,6 +472,13 @@ export class SyntaxColoringProvider extends Singleton {
 				blockOut = true;
 				blockOpenAt = i;
 				i += 2;
+				// Opener al FINAL de la línea ("/*" como única cosa): el bucle
+				// sale sin poder pintarlo en la siguiente pasada, así que se
+				// pinta aquí (desde el opener hasta el final de la línea).
+				if (i >= len) {
+					addExcluded(CATEGORY_COMMENTS, blockOpenAt, len);
+					break;
+				}
 				continue;
 			}
 			if (lineText[i] === '{' && lineText[i + 1] !== '$') {
@@ -463,6 +486,12 @@ export class SyntaxColoringProvider extends Singleton {
 				braceOut = true;
 				braceOpenAt = i;
 				i += 1;
+				// Opener al FINAL de la línea ("{"): idem al de comentario de
+				// bloque, el bucle saldría sin añadir el rango.
+				if (i >= len) {
+					addExcluded(CATEGORY_COMMENTS, braceOpenAt, len);
+					break;
+				}
 				continue;
 			}
 			i++;

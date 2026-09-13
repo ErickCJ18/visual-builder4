@@ -1,4 +1,4 @@
-import { isFileExists, Singleton, resolveExeName } from '@utils';
+import { isFileExists, Singleton, resolveExeName, showInfoToast } from '@utils';
 import { spawn } from 'child_process';
 import { promises as fsp } from 'fs';
 import * as path from 'path';
@@ -40,9 +40,9 @@ export class DeveloperTools extends Singleton {
                 const vsix = await this.findLatestVsix(root);
 
                 if (vsix) {
-                    vscode.window.showInformationMessage(this.t('dt.vsixGenerated', { file: vsix }));
+                    void showInfoToast(this.t('dt.vsixGenerated', { file: vsix }));
                 } else {
-                    vscode.window.showInformationMessage(this.t('dt.compiledNoVsix'));
+                    void showInfoToast(this.t('dt.compiledNoVsix'));
                 }
                 return;
             }
@@ -103,12 +103,12 @@ export class DeveloperTools extends Singleton {
             child.unref();
             child.on('close', () => void restoreSplashVideos(gamePath));
 
-            vscode.window.showInformationMessage(this.t('dt.launching', { exe }));
+            void showInfoToast(this.t('dt.launching', { exe }));
             return;
         }
 
         spawn(exePath, [], { detached: true, stdio: 'ignore', cwd: gamePath }).unref();
-        vscode.window.showInformationMessage(this.t('dt.launching', { exe }));
+        void showInfoToast(this.t('dt.launching', { exe }));
     }
 
     private runShell(command: string, cwd: string): Promise<{ code: number; output: string }> {

@@ -170,8 +170,16 @@ const en: Record<string, string> = {
 	'cb.processError': 'Process error: {message}',
 	'cb.readLogFailed': 'Failed to read log file: {message}',
 	'cb.noOutput': 'Sanny Builder did not produce an output file. Check the SB4 folder and try again.',
+	'cb.imgInUse': 'script.img is in use by the game and cannot be replaced. If you changed an external script, exit the game and recompile.',
 	'cb.keepTabInsteadOfPrompt': 'The source is safe in the compiled tab. Close the previous tab manually without saving.',
+	'cb.hintJumpToOffset0': 'A jump points to the start of a script (offset 0). Check `goto`/`jump`/`gosub` whose target is the FIRST label of a mission/thread: that label sits "before the first command". Add an opcode before it or point to a deeper label.',
+	'cb.rollbackNote': 'The previous compiled file was restored: the failed compile did not reach the game.',
 	'cb.outputChannel': 'VB4 Compile',
+
+	// --- Expand opcode number (F1) ---
+	'ox.noEditor': 'Open a script to expand an opcode number (F1).',
+	'ox.noCode': 'Type an opcode address (hex, e.g. 009 or 0A5) and press F1.',
+	'ox.notFound': 'No opcodes found starting with "{code}".',
 
 	// --- Coordenadas ---
 	'coords.noGame': 'Could not determine the GTA game to read. Select a valid GTA version (SB4: Select GTA Version).',
@@ -190,7 +198,37 @@ const en: Record<string, string> = {
 	'ow.filterLabel': 'Filter Opcodes:',
 	'ow.filterPlaceholder': 'Enter opcode name, class, method or address',
 	'ow.matches': 'Matches: {n}',
-	'ow.noResults': 'No results'
+	'ow.noResults': 'No results',
+
+	// --- Archivos FXT (textos custom CLEO) ---
+	'fxt.corrupted': 'This .fxt file contains U+FFFD replacement characters (shown as "ï¿½"). It was probably corrupted earlier by an encoding mismatch when saving. The original accented characters cannot be recovered automatically: restore the file from a backup or re-type the affected lines.',
+	'fxt.utf8': 'This .fxt looks like a UTF-8 file. This extension opens .fxt files as Windows-1252 (ANSI) by default, and saving it as-is could break accented characters. Reopen it with UTF-8 to edit it safely.',
+	'fxt.reopenWith': 'Reopen with Encoding',
+	'fxt.recovered': 'Converted this .fxt to Windows-1252 (ANSI). The accented characters are now stored the way the game reads them.',
+	'fxt.nextEntryNoEntry': 'No GXT entry with a numeric id to increment was found on or above the cursor.',
+	'fxt.entryTooLong': "The GXT entry has {n} characters, more than the 7 allowed. The game won't load this entry.",
+	'fxt.trailingSpace': "Trailing empty space at the end of the line. The game won't show this entry.",
+
+	// --- Ajustes de la extensión (webview) ---
+	'st.panelTitle': 'VB4: Settings',
+	'st.subtitle': 'Extension behavior, toggle by toggle.',
+	'st.autosaveSection': 'Autosave & restore',
+	'st.autosaveEnabled': 'Autosave the most recently worked file',
+	'st.autosaveEnabledDesc': 'On each finished line, the full text of the active .sb/.scm/.fxt is saved to the extension cache (never written to disk). When the app reopens, an editable tab with the most recent code is restored.',
+	'st.autosaveModeLabel': 'Which files to cache:',
+	'st.modeRecent': 'Only the most recent file',
+	'st.modeRecentDesc': 'A single slot: the last file you were editing. Replaced when you switch to another file.',
+	'st.modeAll': 'Every edited file',
+	'st.modeAllDesc': 'Keeps each edited file in the cache (up to 20).',
+	'st.cacheInfo': 'Cache: {n} file(s) · most recent: {file}',
+	'st.cacheEmpty': 'Nothing cached yet.',
+	'st.cleanupTitle': 'Automatic cleanup on startup',
+	'st.cleanupDesc': 'Removes cached entries whose real file no longer exists on disk, or that are older than the retention below.',
+	'st.retentionLabel': 'Keep entries for this many days (0 = forever):',
+	'st.retentionDesc': 'Default: 7 days. Applied the next time the extension starts.',
+	'st.clearCache': 'Clear cached files',
+	'st.statusReady': 'Ready',
+	'st.saved': 'Saved.'
 };
 
 const es: Record<string, string> = {
@@ -353,8 +391,16 @@ const es: Record<string, string> = {
 	'cb.processError': 'Error del proceso: {message}',
 	'cb.readLogFailed': 'No se pudo leer el archivo de log: {message}',
 	'cb.noOutput': 'Sanny Builder no generó el archivo de salida. Verificá la carpeta de SB4 e intenta de nuevo.',
+	'cb.imgInUse': 'script.img está en uso por el juego y no se puede reemplazar. Si cambiaste un script externo, salí del juego y recompila de nuevo.',
 	'cb.keepTabInsteadOfPrompt': 'El código está a salvo en la pestaña del compilado. Cerrá la pestaña previa manualmente sin guardar.',
+	'cb.hintJumpToOffset0': 'Un salto apunta al inicio mismo de un script (offset 0). Revisá los `goto`/`jump`/`gosub` cuyo destino sea el PRIMER label de una misión/thread: ese destino queda "antes del primer comando". Agregá un comando antes del label o apuntá a un label interno.',
+	'cb.rollbackNote': 'Se restauró el archivo compilado anterior: la compilación fallida no llegó al juego.',
 	'cb.outputChannel': 'VB4 Compile',
+
+	// --- Expand pivote de opcode (F1) ---
+	'ox.noEditor': 'Abrí un script para expandir un número de opcode (F1).',
+	'ox.noCode': 'Escribí el número del opcode (hex, ej. 009 o 0A5) y presioná F1.',
+	'ox.notFound': 'No se encontraron opcodes que empiecen con "{code}".',
 
 	// --- Coordenadas ---
 	'coords.noGame': 'No se pudo determinar el juego de GTA a leer. Seleccioná una versión válida (SB4: Select GTA Version).',
@@ -373,7 +419,37 @@ const es: Record<string, string> = {
 	'ow.filterLabel': 'Filtrar opcodes:',
 	'ow.filterPlaceholder': 'Escribí nombre de opcode, clase, método o dirección',
 	'ow.matches': 'Coincidencias: {n}',
-	'ow.noResults': 'Sin resultados'
+	'ow.noResults': 'Sin resultados',
+
+	// --- Archivos FXT (textos custom CLEO) ---
+	'fxt.corrupted': 'Este archivo .fxt contiene caracteres de reemplazo U+FFFD (se ven como "ï¿½"). Probablemente se corrompió antes al guardarlo con un encoding equivocado. Los acentos originales no se pueden recuperar automáticamente: restaurá el archivo desde un backup o re-creá las líneas afectadas.',
+	'fxt.utf8': 'Este .fxt parece un archivo UTF-8. Esta extensión abre los .fxt como Windows-1252 (ANSI) por defecto y, si lo guardás tal cual, los acentos podrían romperse. Reabrilo con UTF-8 para editarlo con seguridad.',
+	'fxt.reopenWith': 'Reabrir con Encoding',
+	'fxt.recovered': 'Se convirtió este .fxt a Windows-1252 (ANSI). Los caracteres acentuados ahora quedan guardados como los lee el juego.',
+	'fxt.nextEntryNoEntry': 'No se encontró una entrada GXT con id numérico para incrementar en o sobre el cursor.',
+	'fxt.entryTooLong': 'La entrada GXT tiene {n} caracteres, más de los 7 permitidos. El juego no cargará esta entrada.',
+	'fxt.trailingSpace': 'Espacio vacío al final de la línea. El juego no mostrará esta entrada.',
+
+	// --- Ajustes de la extensión (webview) ---
+	'st.panelTitle': 'VB4: Ajustes',
+	'st.subtitle': 'El comportamiento de la extensión, toggle por toggle.',
+	'st.autosaveSection': 'Autoguardado y restauración',
+	'st.autosaveEnabled': 'Autoguardar el archivo recién trabajado',
+	'st.autosaveEnabledDesc': 'Al terminar cada línea, el texto completo del .sb/.scm/.fxt activo se guarda en la caché de la extensión (nunca se escribe en disco). Al reabrir el programa se restaura una pestaña editable con el código más reciente.',
+	'st.autosaveModeLabel': 'Qué archivos se cachean:',
+	'st.modeRecent': 'Solo el archivo más reciente',
+	'st.modeRecentDesc': 'Una sola entrada: el archivo que estabas editando. Se reemplaza al pasar a otro archivo.',
+	'st.modeAll': 'Todos los archivos editados',
+	'st.modeAllDesc': 'Guarda en caché cada archivo editado (hasta 20).',
+	'st.cacheInfo': 'Caché: {n} archivo(s) · más reciente: {file}',
+	'st.cacheEmpty': 'Todavía no hay nada cacheado.',
+	'st.cleanupTitle': 'Limpieza automática al iniciar',
+	'st.cleanupDesc': 'Elimina las entradas en caché cuyo archivo real ya no existe en disco, o que superan la retención de abajo.',
+	'st.retentionLabel': 'Conservar las entradas este número de días (0 = para siempre):',
+	'st.retentionDesc': 'Por defecto: 7 días. Se aplica la próxima vez que inicia la extensión.',
+	'st.clearCache': 'Vaciar caché de autoguardado',
+	'st.statusReady': 'Listo',
+	'st.saved': 'Guardado.'
 };
 
 export const CATALOGS: Record<string, Record<string, string>> = { en, es };

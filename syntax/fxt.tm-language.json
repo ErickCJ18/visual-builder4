@@ -1,0 +1,29 @@
+{
+    "scopeName": "source.fxt",
+    "name": "FXT",
+    "patterns": [
+        {
+            "match": "^\\s*//.*$",
+            "name": "comment.line.fxt"
+        },
+        {
+            "begin": "^([^\\s]+)\\s+",
+            "beginCaptures": {
+                "1": {
+                    "name": "entity.name.class.fxt"
+                }
+            },
+            "end": "$",
+            "patterns": [
+                {
+                    "match": "//.*",
+                    "name": "comment.line.fxt"
+                },
+                {
+                    "match": "~[^~]*~",
+                    "name": "constant.other.gxt-format.fxt"
+                }
+            ]
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-import { CONFIG, Singleton, StorageKey, isFileExists } from '@utils';
+import { CONFIG, Singleton, StorageKey, isFileExists, showInfoToast } from '@utils';
 import { LocaleManager } from '@i18n';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -60,7 +60,7 @@ export class FolderManager extends Singleton {
 
         await this.storageDataManager.set(StorageKey.Sb4FolderPath, folderPath);
         //await this.languageManager.updatePatterns();
-        await vscode.window.showInformationMessage(LocaleManager.getInstance().t('folder.selectedOk'));
+        await showInfoToast(LocaleManager.getInstance().t('folder.selectedOk'));
     }
 
     private async validateFolder(folderPath: string): Promise<boolean> {

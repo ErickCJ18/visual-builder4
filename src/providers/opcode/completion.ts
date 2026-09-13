@@ -1,9 +1,10 @@
-import { Command, CommandArgs, CONFIG, Singleton, VAR_NOTATIONS } from '@utils';
+import { Command, CommandArgs, CONFIG, Singleton } from '@utils';
 import * as vscode from 'vscode';
 import { CompletionItemKind } from 'vscode';
 import { KEYWORDS } from '../syntax/syntax-coloring-provider';
 import { BaseProvider } from '../base';
 import { OpcodeProvider } from './opcode';
+import { buildOpcodeLine, formatOpcodeArg } from './format';
 
 export class OpcodeCompletionProvider extends Singleton {
 	private opcode: OpcodeProvider = OpcodeProvider.getInstance();
@@ -112,29 +113,11 @@ export class OpcodeCompletionProvider extends Singleton {
 	}
 
 	private buildDefaultLine(command: Command): string {
-		const address = command.id ? `${command.id}:` : '';
-		const output = this.formatOutput(command.output);
-		const input = (command.input ?? []).map(a => this.formatArg(a)).join(' ');
-		return [address, output, command.name, input].filter(Boolean).join(' ').trimEnd();
-	}
-
-	private formatOutput(output?: CommandArgs[]): string {
-		if (!output || output.length === 0) {
-			return '';
-		}
-
-		const parts = output.map(arg => {
-			const varPart = arg.source ? `${VAR_NOTATIONS[arg.source] ?? arg.source} ` : '';
-			const namePart = arg.name ? `${arg.name}: ` : '';
-			const typePart = arg.type ?? '';
-			return `[${varPart}${namePart}${typePart}]`;
-		});
-
-		return `${parts.join(', ')} =`;
+		return buildOpcodeLine(command);
 	}
 
 	private formatArg(arg: CommandArgs): string {
-		return [arg.name ? `{${arg.name}}` : '', arg.type ? `[${arg.type}]` : ''].filter(Boolean).join(' ');
+		return formatOpcodeArg(arg);
 	}
 
 	private formatCommand(command: Command): string {

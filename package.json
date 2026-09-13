@@ -27,7 +27,9 @@
     ],
     "activationEvents": [
         "onStartupFinished",
-        "onFileSystem:sb4-tab"
+        "onFileSystem:sb4-tab",
+        "onFileSystem:sb4-recent",
+        "onCommand:sb4.openSettings"
     ],
     "main": "./dist/extension.js",
     "contributes": {
@@ -73,6 +75,10 @@
                 "title": "%command.themeCreator%"
             },
             {
+                "command": "sb4.openSettings",
+                "title": "%command.openSettings%"
+            },
+            {
                 "command": "sb4.insertCoordinates",
                 "title": "%command.insertCoordinates%"
             },
@@ -103,6 +109,18 @@
             {
                 "command": "sb4.importTexts",
                 "title": "%command.importTexts%"
+            },
+            {
+                "command": "sb4.expandOpcode",
+                "title": "%command.expandOpcode%"
+            },
+            {
+                "command": "sb4.tabFillOpcodeParam",
+                "title": "%command.tabFillOpcodeParam%"
+            },
+            {
+                "command": "sb4.nextFxtEntry",
+                "title": "%command.nextFxtEntry%"
             }
         ],
 "configuration": {
@@ -117,6 +135,39 @@
                     "type": "boolean",
                     "default": true,
                     "description": "%config.openGameQuickLoad%"
+                },
+                "sb4.toast.autoDismiss": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "%config.toastAutoDismiss%"
+                },
+                "sb4.toast.duration": {
+                    "type": "number",
+                    "default": 3000,
+                    "minimum": 250,
+                    "maximum": 60000,
+                    "description": "%config.toastDuration%"
+                },
+                "sb4.autosave.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "%config.autosaveEnabled%"
+                },
+                "sb4.autosave.mode": {
+                    "type": "string",
+                    "enum": [
+                        "recent",
+                        "all"
+                    ],
+                    "default": "recent",
+                    "description": "%config.autosaveMode%"
+                },
+                "sb4.autosave.maxAgeDays": {
+                    "type": "number",
+                    "default": 7,
+                    "minimum": 0,
+                    "maximum": 365,
+                    "description": "%config.autosaveMaxAgeDays%"
                 },
                 "sb4.colors.enabled": {
                     "type": "boolean",
@@ -180,11 +231,29 @@
                 }
             }
         },
+        "configurationDefaults": {
+            "[sannybuilder-fxt]": {
+                "files.encoding": "windows1252",
+                "editor.suggest.showWords": false,
+                "editor.quickSuggestions": false,
+                "editor.suggestOnTriggerCharacters": false
+            }
+        },
         "keybindings": [
             {
                 "key": "f6",
                 "command": "sb4.compileScript",
                 "when": "editorTextFocus"
+            },
+            {
+                "key": "f1",
+                "command": "sb4.expandOpcode",
+                "when": "editorTextFocus \u0026\u0026 resourceLangId == sannybuilder"
+            },
+            {
+                "key": "tab",
+                "command": "sb4.tabFillOpcodeParam",
+                "when": "editorTextFocus \u0026\u0026 resourceLangId == sannybuilder \u0026\u0026 sb4OpcodeParamContext \u0026\u0026 !suggestWidgetVisible \u0026\u0026 !hasSnippetCompletions \u0026\u0026 !inSnippetMode"
             },
             {
                 "key": "f7",
@@ -205,6 +274,11 @@
                 "key": "ctrl+shift+e",
                 "command": "sb4.insertAngle",
                 "when": "editorTextFocus \u0026\u0026 resourceLangId == sannybuilder"
+            },
+            {
+                "key": "ctrl+shift+enter",
+                "command": "sb4.nextFxtEntry",
+                "when": "editorTextFocus \u0026\u0026 resourceLangId == sannybuilder-fxt"
             },
             {
                 "key": "f8",
@@ -239,6 +313,22 @@
                     "light": "./images/language-icon-16.png",
                     "dark": "./images/language-icon-16.png"
                 }
+            },
+            {
+                "id": "sannybuilder-fxt",
+                "aliases": [
+                    "Sanny Builder FXT",
+                    "GTA FXT",
+                    "CLEO Text"
+                ],
+                "extensions": [
+                    ".fxt"
+                ],
+                "configuration": "./fxt-language-configuration.json",
+                "icon": {
+                    "light": "./images/language-icon-16.png",
+                    "dark": "./images/language-icon-16.png"
+                }
             }
         ],
         "grammars": [
@@ -256,6 +346,14 @@
                     ".cm",
                     ".csa",
                     ".csi"
+                ]
+            },
+            {
+                "language": "sannybuilder-fxt",
+                "scopeName": "source.fxt",
+                "path": "./syntax/fxt.tm-language.json",
+                "extensions": [
+                    ".fxt"
                 ]
             }
         ],

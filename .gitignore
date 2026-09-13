@@ -6,3 +6,8 @@ package-lock.json
 *.tsbuildinfo
 dist
 contexto-visual-builder4.md
+*.md
+*.md
+
+# compilador interno de SCM/CLEO (harness, fixtures, goldens y artefactos)
+src/compiler/

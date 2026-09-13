@@ -1,11 +1,11 @@
-import { isBinaryFile, isFileExists, Singleton, StorageKey } from '@utils';
+import { isBinaryFile, isFileExists, Singleton, StorageKey, showInfoToast } from '@utils';
 import { spawn } from 'child_process';
 import { promises as fsp } from 'fs';
 import * as iconv from 'iconv-lite';
 import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { FolderManager, GtaVersionManager, StorageDataManager } from '@managers';
+import { FolderManager, GameFolderManager, GtaVersionManager, StorageDataManager } from '@managers';
 import { LocaleManager } from '@i18n';
 import { SyntaxColoringProvider } from '@providers';
 import { CompilerTools } from './compiler-tools';
@@ -41,6 +41,11 @@ export abstract class CommandBase extends Singleton implements vscode.Disposable
 
     // Destino de compilación recordado por pestaña/fuente durante la sesión.
     private compileTargets = new Map<string, string>();
+
+    // Backup del binario de destino de la ÚLTIMA compilación en curso: si
+    // sanny reporta errores, `discardFailedOutput` restaura esta copia y el
+    // resultado roto NUNCA pisa la última versión buena del juego.
+    private compileBackup?: { output: string; backup: string };
 
     private readonly executeOptions: Record<ExecuteType, ExecuteInfo> = {
         [ExecuteType.COMPILE]: {
@@ -173,6 +178,7 @@ private async getCompileTarget(): Promise<{ input: string; output: string } | un
         let filePath: string | undefined;
         let outputPath: string | undefined;
         let swapActiveTab = false;
+        let sourceUri: vscode.Uri | undefined;
 
         if (this.executeType === ExecuteType.COMPILE) {
             const editor = vscode.window.activeTextEditor;
@@ -181,40 +187,67 @@ private async getCompileTarget(): Promise<{ input: string; output: string } | un
                 return;
             }
 
-            // Flujo estilo SB4: tab SIN NOMBRE (p.ej. pegar el código en una
-            // pestaña nueva). El contenido se vuelca a un archivo temporal en
-            // disco (sanny no puede leer el buffer), se compila sobre el
-            // archivo que elijas (main.scm) y al terminar la pestaña se
-            // reemplaza por el compilado ("el nombre del archivo en la tab").
-            if (editor.document.uri.scheme !== 'file') {
-                const tempSource = path.join(os.tmpdir(), `sb4-src-${process.pid}-${Date.now()}.sb`);
-                this.temporarySourceContent = editor.document.getText();
-                await fsp.writeFile(tempSource, this.temporarySourceContent, 'utf-8');
+            // Los diagnostics apuntan a la pestaña que el usuario ve (fuente
+            // física, tab sin nombre o pestaña virtual), NO al temporal que
+            // sanny compila y que la extensión borra al terminar.
+            sourceUri = editor.document.uri;
 
-                const outputUri = await vscode.window.showSaveDialog({
-                    title: this.t('cb.saveTitle'),
-                    defaultUri: vscode.Uri.file(path.join(this.getWorkspaceFolder(), 'main.scm')),
-                    filters: { [this.t('cb.filterCompiled')]: ['scm', 'cs', 'cs3', 'cs4', 's', 'cm', 'csa', 'csi'] }
-                });
+// Flujos de pestaña SIN archivo físico:
+			// - Tab SIN NOMBRE (untitled): se vuelca a un temporal y al terminar
+			//   la pestaña se sustituye por la virtual del compilado.
+			// - Tab VIRTUAL (sb4-tab) ya establecida: el destino ya se eligió la
+			//   primera vez. Se recompila SIEMPRE al MISMO output (sin volver a
+			//   preguntar) y la tab virtual se conserva tal cual.
+			if (editor.document.uri.scheme !== 'file') {
+				const isVirtual = editor.document.uri.scheme === SB4_VIRTUAL_SCHEME;
+				const rememberedOutput = isVirtual ? this.virtualDocProvider.getTarget(editor.document.uri) : undefined;
 
-                if (!outputUri) {
-                    await fsp.unlink(tempSource).catch(() => { });
-                    return;
-                }
+				if (rememberedOutput) {
+					// Pestaña virtual establecida: NO se vuelve a abrir el
+					// diálogo ni se tocan las pestañas (evita que el editor
+					// "edite solo" borrando cambios al vaciar/deshacer).
+					const tempSource = path.join(os.tmpdir(), `sb4-src-${process.pid}-${Date.now()}.sb`);
+					this.temporarySourceContent = editor.document.getText();
+					this.temporarySourcePath = tempSource;
+					await fsp.writeFile(tempSource, this.temporarySourceContent, 'utf-8');
+					filePath = tempSource;
+					outputPath = rememberedOutput;
+				} else {
+					const tempSource = path.join(os.tmpdir(), `sb4-src-${process.pid}-${Date.now()}.sb`);
+					this.temporarySourceContent = editor.document.getText();
+					await fsp.writeFile(tempSource, this.temporarySourceContent, 'utf-8');
 
-this.temporarySourcePath = tempSource;
-				filePath = tempSource;
-				outputPath = outputUri.fsPath;
-				swapActiveTab = true;
-				await this.rememberCompileExt(path.dirname(outputPath), path.basename(outputPath, path.extname(outputPath)), path.extname(outputPath).replace(/^\./, ''));
+					const outputUri = await vscode.window.showSaveDialog({
+						title: this.t('cb.saveTitle'),
+						defaultUri: vscode.Uri.file(path.join(this.getWorkspaceFolder(), 'main.scm')),
+						filters: { [this.t('cb.filterCompiled')]: ['scm', 'cs', 'cs3', 'cs4', 's', 'cm', 'csa', 'csi'] }
+					});
 
-				// Swap TEMPRANO: en este punto la tab sin nombre es la que
-				// acaba de quedar activa tras el diálogo, así que limpiarla
-				// con undo es fiable y el cierre no pregunta por guardar.
-				// Además el usuario ve "main.scm" desde el inicio (mientras
-				// compila) en vez de esperar al resultado.
-				await this.swapUntitledToVirtualTab(editor, outputUri.fsPath);
-            } else {
+					if (!outputUri) {
+						await fsp.unlink(tempSource).catch(() => { });
+						return;
+					}
+
+					this.temporarySourcePath = tempSource;
+					filePath = tempSource;
+					outputPath = outputUri.fsPath;
+					await this.rememberCompileExt(path.dirname(outputPath), path.basename(outputPath, path.extname(outputPath)), path.extname(outputPath).replace(/^\./, ''));
+
+					if (isVirtual) {
+						// Tab virtual restaurada sin destino conocido: se elige
+						// la primera vez y se recuerda para recompilar directo.
+						this.virtualDocProvider.setTarget(editor.document.uri, outputUri.fsPath);
+					} else {
+						// Swap TEMPRANO: en este punto la tab sin nombre es la que
+						// acaba de quedar activa tras el diálogo, así que limpiarla
+						// con undo es fiable y el cierre no pregunta por guardar.
+						// Además el usuario ve "main.scm" desde el inicio (mientras
+						// compila) en vez de esperar al resultado.
+						swapActiveTab = true;
+						await this.swapUntitledToVirtualTab(editor, outputUri.fsPath);
+					}
+				}
+			} else {
                 // Compilar el contenido en disco: guardar antes si la pestaña
                 // está sucia, para que sanny compile lo que se ve.
                 if (editor.document.isDirty && !await editor.document.save()) {
@@ -233,7 +266,7 @@ this.temporarySourcePath = tempSource;
             return;
         }
 
-        await this.executeOperation(filePath, outputPath, swapActiveTab);
+        await this.executeOperation(filePath, outputPath, swapActiveTab, sourceUri);
     }
 
     private getWorkspaceFolder(): string {
@@ -241,7 +274,7 @@ this.temporarySourcePath = tempSource;
         return (folders && folders.length > 0) ? folders[0].uri.fsPath : os.homedir();
     }
 
-    private async executeOperation(filePath: string, outputPath?: string, swapActiveTab = false) {
+    private async executeOperation(filePath: string, outputPath?: string, swapActiveTab = false, sourceUri?: vscode.Uri) {
         const folderPath = this.storageDataManager.get(StorageKey.Sb4FolderPath) as string;
 
         if (!folderPath) {
@@ -261,12 +294,18 @@ if (logPath !== null) {
 
 		const started = Date.now();
 
+		// Backup del binario previo ANTES de lanzar sanny: en éxito se descarta
+		// al terminar, en error se restaura (el compilado roto no llega al juego).
+		if (this.executeType === ExecuteType.COMPILE && outputPath) {
+			await this.createCompileBackup(outputPath);
+		}
+
 		try {
 			await vscode.window.withProgress({
 				location: vscode.ProgressLocation.Window,
 				title: this.t(executeOptions.operationTitle),
 				cancellable: false
-			}, () => this.runCompilerProcess(logPath, filePath, outputPath, folderPath, args, started, swapActiveTab));
+			}, () => this.runCompilerProcess(logPath, filePath, outputPath, folderPath, args, started, swapActiveTab, sourceUri));
 		} finally {
 			// El fuente temporal (tab sin nombre) ya no se necesita: el
 			// contenido quedó en la pestaña virtual del compilado.
@@ -291,22 +330,86 @@ if (logPath !== null) {
 		return `(${elapsedMs}ms)`;
 	}
 
-	private async runCompilerProcess(logPath: string | null, filePath: string, outputPath: string | undefined, folderPath: string, args: string[], started: number, swapActiveTab: boolean): Promise<void> {
+	private async runCompilerProcess(logPath: string | null, filePath: string, outputPath: string | undefined, folderPath: string, args: string[], started: number, swapActiveTab: boolean, sourceUri?: vscode.Uri): Promise<void> {
 		// sanny.exe no tiene modo headless (sannybuilder/dev#399): su ventana
 		// puede parpadear al compilar. `windowsHide` aplica SW_HIDE vía
 		// STARTUPINFO (igual que el wrapper VBS) pero sin el ~1.1s de arranque
 		// de cscript.exe, así que el proceso se lanza directo y es más rápido.
 		const sannyExe = path.join(folderPath, 'sanny.exe');
 
+		// El diálogo "IMG" de sanny (`Compiler::ShowIMGWarning`) frena el flujo
+		// pidiendo un OK a mano: se desactiva antes de compilar.
+		await this.suppressImgWarning(folderPath);
+
 		return new Promise<void>((resolve, reject) => {
 			const child = spawn(sannyExe, args, { windowsHide: true });
 
-			child.on('close', () => this.handleProcessClose(logPath, filePath, outputPath, started, swapActiveTab, resolve, reject));
+			child.on('close', () => this.handleProcessClose(logPath, filePath, outputPath, started, swapActiveTab, sourceUri, resolve, reject));
 			child.on('error', err => this.handleProcessError(err, reject));
 		});
 	}
 
-	private async handleProcessClose(logPath: string | null, filePath: string, outputPath: string | undefined, started: number, swapActiveTab: boolean, resolve: () => void, reject: (reason?: any) => void) {
+	/**
+	 * Sanny muestra un diálogo "IMG" al compilar (`Compiler::ShowIMGWarning` en
+	 * `data\settings.ini`) que informa que `script.img` está en uso por el juego
+	 * y no se puede reemplazar. El diálogo exige un OK a mano, así que se
+	 * desactiva para no frenar el flujo; la MISMA advertencia la re-emite la
+	 * extensión como toast (no bloqueante) tras el éxito, cuando corresponde.
+	 */
+	private async suppressImgWarning(folderPath: string) {
+		if (this.executeType !== ExecuteType.COMPILE) {
+			return;
+		}
+		const iniPath = path.join(folderPath, 'data', 'settings.ini');
+		try {
+			const buffer = await fsp.readFile(iniPath);
+			const text = buffer.toString('latin1');
+			const line = /^Compiler::ShowIMGWarning=.*$/m;
+			const updated = line.test(text)
+				? text.replace(line, 'Compiler::ShowIMGWarning=0')
+				: `${text.replace(/\n?$/, '\n')}Compiler::ShowIMGWarning=0\n`;
+			if (updated !== text) {
+				await fsp.writeFile(iniPath, Buffer.from(updated, 'latin1'));
+			}
+		} catch {
+			// Sin settings.ini no se puede silenciar; sanny compila igual.
+		}
+	}
+
+	/**
+	 * Replica la advertencia que sanny mostraba en el diálogo "IMG": si el
+	 * `script.img` del juego está BLOQUEADO por un proceso (el juego abierto lo
+	 * tiene sin permitir escritura), la compilación no reemplaza el script que
+	 * el juego seguirá leyendo. Devuelve el texto a anexar al toast de éxito
+	 * (`'\n⚠️ ...'`), o '' si el juego no está usando su IMG.
+	 */
+	private async getScriptImgInUseNote(): Promise<string> {
+		const gamePath = GameFolderManager.getInstance().getStoredPath();
+		if (!gamePath) {
+			return '';
+		}
+		const candidates = [
+			path.join(gamePath, 'script.img'),
+			path.join(gamePath, 'data', 'script', 'script.img')
+		];
+		for (const scriptImg of candidates) {
+			try {
+				// `r+` pide acceso de ESCRITURA sin truncar: si el juego tiene
+				// el archivo abierto sin compartir escritura, el open falla;
+				// si no, se abre y se cierra de inmediato sin tocar el contenido.
+				const fd = await fsp.open(scriptImg, 'r+');
+				await fd.close();
+			} catch (error) {
+				const code = (error as NodeJS.ErrnoException).code;
+				if (code !== 'ENOENT') {
+					return `\n⚠️ ${this.t('cb.imgInUse')}`;
+				}
+			}
+		}
+		return '';
+	}
+
+	private async handleProcessClose(logPath: string | null, filePath: string, outputPath: string | undefined, started: number, swapActiveTab: boolean, sourceUri: vscode.Uri | undefined, resolve: () => void, reject: (reason?: any) => void) {
 		try {
 			if (logPath === null) {
 				// DECOMPILE: sanny no escribe compile.log; la ventana Report
@@ -320,7 +423,7 @@ if (logPath !== null) {
 				await this.waitForWrite([path.join(path.dirname(filePath), `${baseName}.txt`)]);
 
 				this.diagnosticCollection?.clear();
-				vscode.window.showInformationMessage(`✅ ${this.t(executeOptions.successMessage)}${elapsed}`);
+				void showInfoToast(`✅ ${this.t(executeOptions.successMessage)}${elapsed}`);
 				await this.showSuccessOutput(filePath, outputPath, swapActiveTab);
 			} else {
 				// COMPILE: sanny sale del proceso en ~30ms pero recién escribe
@@ -331,25 +434,46 @@ if (logPath !== null) {
 				const elapsed = ` ${this.formatElapsed(Date.now() - started)}`;
 				const target = outputPath ? ` → ${path.basename(outputPath)}` : '';
 
-				const arrived = await this.waitForWrite([logPath, ...(outputPath ? [outputPath] : [])], 10000);
+				// Espera la EVIDENCIA CONCLUSIVA y corta lo antes posible: en
+				// éxito sanny a veces NO escribe compile.log, y el antiguo
+				// waitForWrite esperaba TODOS los paths → hasta 10 s esperando
+				// un log que no va a llegar. Ahora corta en cuanto hay señal.
+				const evidence = await this.waitForCompileEvidence(logPath, outputPath, started);
 
-				if (arrived.includes(logPath)) {
+				if (evidence.logArrived) {
 					const content = await this.readLogFile(logPath).catch(() => '');
 					if (content.trim() !== '') {
-						this.diagnosticCollection?.set(vscode.Uri.file(filePath),
-							this.compilerTools.createFileLevelDiagnostics(content));
-						vscode.window.showErrorMessage(`${this.t(executeOptions.errorMessagePrefix)}${elapsed}:\n${content}`);
+						// Apuntar los diagnostics a la pestaña del usuario, no al
+						// temporal (que se borra al terminar): si se compila desde
+						// una fuente física/untitled/virtual, el error se ve en el
+						// propio código del usuario.
+						const diagUri = sourceUri ?? vscode.Uri.file(filePath);
+						this.diagnosticCollection?.set(diagUri, this.compilerTools.createFileLevelDiagnostics(content));
+						const cleanContent = this.compilerTools.formatErrors(content);
+						const hint = /jump to offset 0/i.test(cleanContent) ? `\n💡 ${this.t('cb.hintJumpToOffset0')}` : '';
+						// "Dejar de compilar al instante" cuando hay ERRORES REALES
+						// (no solo warnings): el binario recién escrito por sanny se
+						// descarta y se restaura la última versión buena.
+						const errorsFound = this.compilerTools.parseCompileErrors(content).length > 0;
+						const rollbackNote = errorsFound && await this.discardFailedOutput(started, outputPath)
+							? `\n♻️ ${this.t('cb.rollbackNote')}`
+							: '';
+						vscode.window.showErrorMessage(`${this.t(executeOptions.errorMessagePrefix)}${elapsed}:\n${cleanContent}${hint}${rollbackNote}`);
 						return;
 					}
 				}
 
-				if (outputPath && !arrived.includes(outputPath)) {
+				if (outputPath && !evidence.outputFresh) {
+					// Nada nuevo se escribió: no hay nada que restaurar. El backup
+					// previo ya no hace falta (la versión buena sigue intacta).
+					await this.deleteCompileBackup();
 					vscode.window.showErrorMessage(`${this.t(executeOptions.errorMessagePrefix)}${elapsed}: ${this.t('cb.noOutput')}`);
 					return;
 				}
 
 				this.diagnosticCollection?.clear();
-				vscode.window.showInformationMessage(`✅ ${this.t(executeOptions.successMessage)}${elapsed}${target}`);
+				const imgNote = await this.getScriptImgInUseNote();
+				void showInfoToast(`✅ ${this.t(executeOptions.successMessage)}${elapsed}${target}${imgNote}`);
 				await this.showSuccessOutput(filePath, outputPath, swapActiveTab);
 			}
 
@@ -357,15 +481,113 @@ if (logPath !== null) {
 			const message = error instanceof Error ? error.message : String(error);
 			vscode.window.showErrorMessage(this.t('cb.readLogFailed', { message }));
 			this.log(`handleProcessClose error: ${message}`);
+		} finally {
+			// SIEMPRE resolver y limpiar el log, también en el camino de error:
+			// antes un `return` adelantado dejaba la promesa colgada (progress
+			// infinito) y el fuente temporal `.sb` quedaba tirado en %TEMP%.
+			resolve();
+			if (logPath !== null) {
+				if (await isFileExists(logPath)) {
+					await fsp.unlink(logPath);
+				}
+			}
+			// Éxito: el nuevo compilado YA es la versión buena → se descarta el
+			// backup previo. (En el camino de error `discardFailedOutput` ya lo
+			// consumió y limpió.) DECOMPILE nunca crea backup → no-op.
+			await this.deleteCompileBackup();
 		}
 
-		resolve();
-		if (logPath !== null) {
-			if (await isFileExists(logPath)) {
-				await fsp.unlink(logPath);
+	}
+
+	/**
+	 * Copia el binario de destino actual a un backup temporal ANTES de COMPILE.
+	 * Si la compilación falla, `discardFailedOutput` restaura esta copia y la
+	 * versión buena sobrevive; si compila bien, el backup se descarta al
+	 * terminar (el nuevo binario pasa a ser la versión buena).
+	 */
+	private async createCompileBackup(outputPath: string) {
+		this.compileBackup = undefined;
+		try {
+			if (!(await isFileExists(outputPath))) {
+				return;
+			}
+			const backup = path.join(os.tmpdir(), `sb4-out-${process.pid}-${Date.now()}.bak`);
+			await fsp.copyFile(outputPath, backup);
+			this.compileBackup = { output: outputPath, backup };
+			this.log(`backup previo creado: ${backup} (${outputPath})`);
+		} catch (error) {
+			this.log(`createCompileBackup ${outputPath} failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	}
+
+	/**
+	 * Descarta el compilado CON ERRORES y restaura el backup previo. sanny
+	 * escribe el output hasta ~1s después de salir del proceso, y el
+	 * compile.log con el error puede llegar ANTES de ese write: se espera a
+	 * que el mtime del output quede estable (~500ms) y a que hayan pasado
+	 * ≥1.5s desde el inicio, para no restaurar "a medias" (un write tardío
+	 * pisaría la restauración). Sin backup (primera compilación / error de
+	 * copia) se elimina el output roto recién escrito.
+	 */
+	private async discardFailedOutput(started: number, outputPath?: string): Promise<boolean> {
+		const backup = this.compileBackup;
+		this.compileBackup = undefined;
+
+		const target = backup?.output ?? outputPath;
+		if (!target) {
+			return false;
+		}
+
+		try {
+			const deadline = Date.now() + 3000;
+			let lastMtime = 0;
+			let stableMs = 0;
+			while (Date.now() < deadline) {
+				const st = await fsp.stat(target).catch(() => undefined);
+				const m = st?.mtimeMs ?? 0;
+				if (m !== lastMtime) {
+					lastMtime = m;
+					stableMs = Date.now();
+				}
+				const elapsedOk = Date.now() - started > 1500;
+				if (lastMtime !== 0 && elapsedOk && Date.now() - stableMs > 500) {
+					break;
+				}
+				await new Promise(resolve => setTimeout(resolve, 60));
+			}
+
+			if (backup) {
+				await fsp.copyFile(backup.backup, target);
+				this.log(`compilación con errores: SE RESTAURÓ ${target} desde el backup (binario roto descartado)`);
+				return true;
+			}
+
+			if (await isFileExists(target)) {
+				await fsp.unlink(target);
+				this.log(`compilación con errores: output roto eliminado ${target} (no había versión previa)`);
+			}
+			return false;
+		} catch (error) {
+			this.log(`discardFailedOutput ${target} failed: ${error instanceof Error ? error.message : String(error)}`);
+			return false;
+		} finally {
+			if (backup) {
+				await fsp.unlink(backup.backup).catch(() => { });
 			}
 		}
+	}
 
+	/**
+	 * Elimina el backup del binario previo (éxito/`noOutput`/dispose): el
+	 * compilado reciente ya es la nueva versión buena, o nada nuevo se escribió.
+	 */
+	private async deleteCompileBackup() {
+		if (!this.compileBackup) {
+			return;
+		}
+		const backup = this.compileBackup;
+		this.compileBackup = undefined;
+		await fsp.unlink(backup.backup).catch(() => this.log(`deleteCompileBackup: no se pudo borrar ${backup.backup}`));
 	}
 
 	/**
@@ -391,6 +613,45 @@ if (logPath !== null) {
 		}
 
 		return [...matched];
+	}
+
+	/**
+	 * Espera la PRIMERA EVIDENCIA concluyente del resultado y corta lo antes
+	 * posible (en éxito sanny a veces NO escribe compile.log, así que esperar
+	 * por todos los archivos estiraba el flujo hasta 10 s):
+	 * - `compile.log` es CONCLUSIVO: si aparece, manda (si tiene texto = error;
+	 *   vacío = el output manda).
+	 * - el OUTPUT re-escrito DESPUÉS de `started` (mtime) confirma éxito
+	 *   probable; se da una gracia de 400 ms para que un log de error tardío
+	 *   pueda ganar antes de reportar. Un output viejo de una compilación
+	 *   previa (mtime anterior a `started`) NO cuenta como evidencia.
+	 * - nada en 10 s → `cb.noOutput`.
+	 */
+	private async waitForCompileEvidence(logPath: string, outputPath: string | undefined, started: number, timeoutMs = 10000): Promise<{ logArrived: boolean; outputFresh: boolean }> {
+		const deadline = Date.now() + timeoutMs;
+		let logArrived = false;
+		let freshSince = 0;
+
+		while (Date.now() < deadline) {
+			if (!logArrived && await isFileExists(logPath)) {
+				logArrived = true;
+			}
+			if (freshSince === 0 && outputPath && await isFileExists(outputPath)) {
+				const st = await fsp.stat(outputPath).catch(() => undefined);
+				if (st && st.mtimeMs > started) {
+					freshSince = Date.now();
+				}
+			}
+			if (logArrived) {
+				break;
+			}
+			if (freshSince !== 0 && Date.now() - freshSince > 400) {
+				break;
+			}
+			await new Promise(resolve => setTimeout(resolve, 40));
+		}
+
+		return { logArrived, outputFresh: freshSince !== 0 };
 	}
 
 	private async readLogFile(logPath: string): Promise<string> {
@@ -479,6 +740,15 @@ if (logPath !== null) {
 			return;
 		}
 
+		// Compilar desde la PESTAÑA VIRTUAL ya establecida: la pestaña activa
+		// ES el compilado. Se conserva tal cual (el código que se compiló es el
+		// que el usuario ve; re-dibujarlo o cerrarlo borraría sus cambios).
+		const virtualUri = vscode.Uri.from({ scheme: SB4_VIRTUAL_SCHEME, path: `/${path.basename(outputPath)}` });
+		if (editor && editor.document.uri.toString() === virtualUri.toString()) {
+			this.log('la pestaña activa ya es la virtual del compilado, se conserva');
+			return;
+		}
+
 		// El compilado (.scm/.cs) es binario: VS Code no lo abre como texto.
 		// En lugar de eso se abre una pestaña VIRTUAL titulada como el destino
 		// (main.scm) con el código que se estaba compilando (tab sin nombre:
@@ -493,8 +763,9 @@ if (logPath !== null) {
 			}
 
 			if (virtualContent !== undefined) {
-				const virtualUri = vscode.Uri.from({ scheme: SB4_VIRTUAL_SCHEME, path: `/${path.basename(outputPath)}` });
 				this.virtualDocProvider.setContent(virtualUri, virtualContent);
+				// Recuerda el destino para recompilar desde la tab virtual sin diálogo.
+				this.virtualDocProvider.setTarget(virtualUri, outputPath);
 				this.log(`opening virtual tab ${virtualUri.toString()}`);
 
 				// Cerrar PRIMERO la pestaña del fuente/sin nombre SIN diálogo:
@@ -581,6 +852,7 @@ if (logPath !== null) {
 			.find(t => t.input instanceof vscode.TabInputText && t.input.uri.toString() === editor.document.uri.toString());
 
 		this.virtualDocProvider.setContent(virtualUri, editor.document.getText());
+		this.virtualDocProvider.setTarget(virtualUri, outputPath);
 		this.log(`early swap: closing source tab, opening virtual ${virtualUri.toString()}`);
 
 		// Se limpia/cierra la previa MIENTRAS la tab sigue activa: el vaciado

@@ -1,4 +1,4 @@
-import { Singleton, isFileExists } from '@utils';
+import { Singleton, isFileExists, showInfoToast } from '@utils';
 import { spawn } from 'child_process';
 import { promises as fsp } from 'fs';
 import * as path from 'path';
@@ -352,14 +352,22 @@ export class CoordsProvider extends BaseProvider {
         };
     }
 
-    private isCreateContext(editor: vscode.TextEditor): boolean {
+    /**
+     * Contenido dentro de una llamada de método de clase abierta al final de
+     * la línea ("car.Create(" o "car.Create(1,"): las coordenadas dentro de
+     * una llamada de método se insertan separadas por COMA. Devuelve
+     * undefined si el cursor NO está dentro de un paréntesis de método de
+     * clase (entonces las coordenadas van separadas por espacios, estilo
+     * opcode clásico).
+     */
+    private parenContextBeforeCursor(editor: vscode.TextEditor): string | undefined {
         const document = editor.document;
         const position = editor.selection.active;
         const lineText = document.lineAt(position.line).text;
         const prefix = lineText.slice(0, position.character);
 
-        const match = prefix.match(/\.(\w+)\s*\([^)]*$/);
-        return !!match && /create/i.test(match[1]);
+        const match = prefix.match(/\.\w+\s*\(([^)]*)$/);
+        return match ? match[1] : undefined;
     }
 
     private async readCoords(): Promise<ReadCoordsResult | undefined> {
@@ -378,7 +386,7 @@ export class CoordsProvider extends BaseProvider {
             const stdout = await this.runReader(config.exe, playerPtrHex, config.coordsMode, angleOffsetHex);
 
             if (stdout.trim() === 'NO_PROCESS') {
-                vscode.window.showInformationMessage(LocaleManager.getInstance().t('coords.notFound', { exe: config.exe }));
+                void showInfoToast(LocaleManager.getInstance().t('coords.notFound', { exe: config.exe }));
                 return undefined;
             }
 
@@ -501,9 +509,20 @@ export class CoordsProvider extends BaseProvider {
         const y = result.y.toFixed(decimals);
         const z = result.z.toFixed(decimals);
 
-        const text = this.isCreateContext(editor)
-            ? `${x}, ${y}, ${z}`
-            : `${x} ${y} ${z}`;
+        // Dentro de "car.Create(" o "car.Create(1," → con comas (y la coma
+        // separadora SOLO si aún no hay una al final del paréntesis). Fuera
+        // de un método de clase → "x y z" con espacios (estilo opcode).
+        const parenContent = this.parenContextBeforeCursor(editor);
+
+        const trimmed = parenContent?.trim() ?? '';
+        let text: string;
+        if (parenContent === undefined) {
+            text = `${x} ${y} ${z}`;
+        } else if (trimmed === '' || trimmed.endsWith(',')) {
+            text = `${x}, ${y}, ${z}`;
+        } else {
+            text = `, ${x}, ${y}, ${z}`;
+        }
 
         await this.insertText(editor, text);
     }

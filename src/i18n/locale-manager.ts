@@ -1,4 +1,4 @@
-import { Singleton } from '@utils';
+import { Singleton, showInfoToast } from '@utils';
 import { promises as fsp } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -166,7 +166,7 @@ export class LocaleManager extends Singleton {
 		}
 		if (picked.languageId && picked.languageId !== this.selectedId && await this.setLanguage(picked.languageId)) {
 			const info = this.getCurrentInfo();
-			await vscode.window.showInformationMessage(this.t('meta.languageSet', { name: info?.nativeName ?? picked.languageId }));
+			await showInfoToast(this.t('meta.languageSet', { name: info?.nativeName ?? picked.languageId }));
 		}
 	}
 
@@ -208,7 +208,7 @@ export class LocaleManager extends Singleton {
 
 		try {
 			await fsp.writeFile(uri.fsPath, payload, 'utf-8');
-			await vscode.window.showInformationMessage(this.t('meta.exportSaved', { path: uri.fsPath }));
+			await showInfoToast(this.t('meta.exportSaved', { path: uri.fsPath }));
 		} catch {
 			await vscode.window.showErrorMessage(this.t('meta.couldNotRead'));
 		}
@@ -280,7 +280,7 @@ export class LocaleManager extends Singleton {
 		this.imported.set(id, { name: id, catalog: fileTexts });
 		await this.saveImported();
 
-		await vscode.window.showInformationMessage(this.t('meta.importStats', { id, valid, missing }));
+		await showInfoToast(this.t('meta.importStats', { id, valid, missing }));
 
 		const apply = await vscode.window.showInformationMessage(
 			this.t('meta.applyNow', { id }),

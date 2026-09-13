@@ -1,4 +1,4 @@
-import { Singleton, StorageKey, isFileExists, resolveExeName } from '@utils';
+import { Singleton, StorageKey, isFileExists, resolveExeName, showInfoToast } from '@utils';
 import { LocaleManager } from '@i18n';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -61,7 +61,7 @@ export class GameFolderManager extends Singleton {
         }
 
         await this.storageDataManager.set(StorageKey.GameFolderPath, folderPath);
-        await vscode.window.showInformationMessage(LocaleManager.getInstance().t('gf.selectedOk', { exe }));
+        await showInfoToast(LocaleManager.getInstance().t('gf.selectedOk', { exe }));
     }
 
     private resolveGameExe(): string {

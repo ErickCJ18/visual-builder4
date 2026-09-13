@@ -1,4 +1,4 @@
-import { Singleton, StorageKey } from '@utils';
+import { Singleton, StorageKey, showInfoToast } from '@utils';
 import { promises as fsp } from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -277,7 +277,7 @@ export class SyntaxColorManager extends Singleton {
 		}
 
 		await this.reload();
-		await vscode.window.showInformationMessage(this.t('colors.updatedColor', { label: picked.label }));
+		await showInfoToast(this.t('colors.updatedColor', { label: picked.label }));
 	}
 
 	/**
@@ -483,7 +483,7 @@ export class SyntaxColorManager extends Singleton {
 			await this.reload();
 		}
 
-		await vscode.window.showInformationMessage(this.t('colors.updatedFonts', { category }));
+		await showInfoToast(this.t('colors.updatedFonts', { category }));
 	}
 
 	// ------------------------------------------------------------------
@@ -561,7 +561,7 @@ export class SyntaxColorManager extends Singleton {
 		}
 
 		await this.reload();
-		await vscode.window.showInformationMessage(this.t('colors.themeImported', { name: path.basename(filePath) }));
+		await showInfoToast(this.t('colors.themeImported', { name: path.basename(filePath) }));
 	}
 
 	/**

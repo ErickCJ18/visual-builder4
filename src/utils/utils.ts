@@ -10,6 +10,19 @@ export async function isFileExists(path: string): Promise<boolean> {
     }
 }
 
+export async function showInfoToast(message: string, durationMs?: number): Promise<void> {
+    const config = vscode.workspace.getConfiguration('sb4.toast');
+    if (!config.get<boolean>('autoDismiss', true)) {
+        await vscode.window.showInformationMessage(message);
+        return;
+    }
+    const ms = durationMs ?? config.get<number>('duration', 3000);
+    await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: message, cancellable: false },
+        () => new Promise<void>(resolve => setTimeout(resolve, ms))
+    );
+}
+
 export async function isBinaryFile(filePath: string): Promise<boolean> {
     const handle = await fsp.open(filePath, 'r');
     try {

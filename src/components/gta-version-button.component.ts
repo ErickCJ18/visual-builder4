@@ -1,6 +1,6 @@
 import { CommandManager, GtaVersionManager, StorageDataManager } from '@managers';
 import { ClassProvider, CommandFormatterProvider, EnumProvider, ModelProvider, OpcodeProvider, SyntaxColoringProvider } from '@providers';
-import { CONFIG, Singleton, StorageKey } from '@utils';
+import { CONFIG, Singleton, StorageKey, showInfoToast } from '@utils';
 import { LocaleManager } from '@i18n';
 import * as vscode from 'vscode';
 import { GtaVersion } from '@managers';
@@ -76,7 +76,7 @@ export class GtaVersionButton extends Singleton {
         const gtaVersion = this.storageDataManager.get(StorageKey.GtaVersion) as string;
 
         if (selected.label === gtaVersion) {
-            await vscode.window.showInformationMessage(GtaVersionButton.t('gtaVersion.alreadySelected', { label: selected.label }));
+            await showInfoToast(GtaVersionButton.t('gtaVersion.alreadySelected', { label: selected.label }));
             return;
         }
 
@@ -87,7 +87,7 @@ export class GtaVersionButton extends Singleton {
 		try {
 			await this.reloadOpcodes();
 			await OpcodesSearch.getInstance().updateWebviewContent(true);
-			await vscode.window.showInformationMessage(GtaVersionButton.t('gtaVersion.loaded', { label: selected.label }));
+			await showInfoToast(GtaVersionButton.t('gtaVersion.loaded', { label: selected.label }));
 		} catch (err) {
 			await vscode.window.showErrorMessage(GtaVersionButton.t('gtaVersion.loadFailed', { label: selected.label, error: String(err) }));
 		}

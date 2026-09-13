@@ -1,13 +1,16 @@
 import { CommandManager, FolderManager, GameFolderManager, GtaVersionManager, LanguageManager, StorageDataManager, SyntaxColorManager } from '@managers';
-import { BaseProvider, ClassProvider, CoordsProvider, CommandFormatterProvider, DefinitionSearch, EnumProvider, JumpIncludeProvider, LoopWaitDiagnostics, ModelProvider, OpcodeProvider, OpcodesSearch, ReferenceSearch, SyntaxColoringProvider } from '@providers';
+import { BaseProvider, ClassProvider, CoordsProvider, CommandFormatterProvider, DefinitionSearch, EnumProvider, FxtDiagnostics, FxtNextEntry, JumpIncludeProvider, LoopWaitDiagnostics, ModelProvider, OpcodeProvider, OpcodeExpandProvider, OpcodeTabFillProvider, OpcodesSearch, ReferenceSearch, SyntaxColoringProvider } from '@providers';
 import { LocaleManager } from '@i18n';
 import * as vscode from 'vscode';
 import { CompileCommand } from './compiler-tools/compile-command';
 import { DecompileCommand } from './compiler-tools/decompile-command';
 import { DeveloperTools } from './compiler-tools/developer-tools';
 import { GtaVersionButton } from './components/gta-version-button.component';
+import { FxtEncodingGuard } from './components/fxt-encoding-guard';
 import { VirtualDocumentProvider } from './components/virtual-document-provider.component';
+import { RecentFileAutosave } from './components/recent-file-autosave.component';
 import { openThemeCreator } from './components/theme-creator';
+import { openSettings } from './components/extension-settings.component';
 
 export async function activate(context: vscode.ExtensionContext) {
     await LocaleManager.getInstance().init(context);
@@ -18,8 +21,10 @@ export async function activate(context: vscode.ExtensionContext) {
     FolderManager.getInstance().init(context);
     GameFolderManager.getInstance().init(context);
     GtaVersionButton.getInstance().init(context);
+    new FxtEncodingGuard().init(context);
     LanguageManager.getInstance().init(context);
     VirtualDocumentProvider.getInstance().init(context);
+    RecentFileAutosave.getInstance().init(context);
     CompileCommand.getInstance().init(context);
     DecompileCommand.getInstance().init(context);
     DeveloperTools.getInstance().init(context);
@@ -30,6 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('sb4.selectLanguage', () => LocaleManager.getInstance().selectLanguage());
     vscode.commands.registerCommand('sb4.exportTexts', () => LocaleManager.getInstance().exportTexts());
     vscode.commands.registerCommand('sb4.importTexts', () => LocaleManager.getInstance().importTexts());
+    vscode.commands.registerCommand('sb4.openSettings', () => openSettings());
 
     JumpIncludeProvider.getInstance().register();
     LoopWaitDiagnostics.getInstance().register();
@@ -38,6 +44,10 @@ export async function activate(context: vscode.ExtensionContext) {
 await EnumProvider.getInstance().init();
 	ClassProvider.getInstance().init();
 	OpcodeProvider.getInstance().init();
+	OpcodeExpandProvider.getInstance().register();
+	OpcodeTabFillProvider.getInstance().register();
+	FxtNextEntry.getInstance().register();
+	FxtDiagnostics.getInstance().register();
 	await ModelProvider.getInstance().init();
 
     await SyntaxColoringProvider.getInstance().init();
