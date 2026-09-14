@@ -28,8 +28,7 @@
     "activationEvents": [
         "onStartupFinished",
         "onFileSystem:sb4-tab",
-        "onFileSystem:sb4-recent",
-        "onCommand:sb4.openSettings"
+        "onFileSystem:sb4-recent"
     ],
     "main": "./dist/extension.js",
     "contributes": {
